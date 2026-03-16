@@ -50,7 +50,7 @@ const CONFIG = {
     RELATION_HIGHLIGHTED_COLOR: "#FF0000",
     RELATION_HIGHLIGHTED_THICKNESS: 5,
 
-    STYLES: ["material-inspired", "original"],
+    STYLES: ["material-inspired", "original", "logical"],
     MATERIAL_RELATION_COLORS: [
         "#323232",
         "#F44336",

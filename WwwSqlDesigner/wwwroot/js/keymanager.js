@@ -3,24 +3,24 @@
 SQL.KeyManager = function (owner) {
     this.owner = owner;
     this.dom = {
-        container: OZ.$("keys"),
+        container: $("#keys").get(0),
     };
     this.build();
 };
 
 SQL.KeyManager.prototype.build = function () {
-    this.dom.list = OZ.$("keyslist");
-    this.dom.type = OZ.$("keytype");
-    this.dom.name = OZ.$("keyname");
-    this.dom.left = OZ.$("keyleft");
-    this.dom.right = OZ.$("keyright");
-    this.dom.fields = OZ.$("keyfields");
-    this.dom.avail = OZ.$("keyavail");
-    this.dom.listlabel = OZ.$("keyslistlabel");
+    this.dom.list = $("#keyslist").get(0);
+    this.dom.type = $("#keytype").get(0);
+    this.dom.name = $("#keyname").get(0);
+    this.dom.left = $("#keyleft").get(0);
+    this.dom.right = $("#keyright").get(0);
+    this.dom.fields = $("#keyfields").get(0);
+    this.dom.avail = $("#keyavail").get(0);
+    this.dom.listlabel = $("#keyslistlabel").get(0);
 
     let ids = ["keyadd", "keyremove"];
     for (let id of ids) {
-        const elm = OZ.$(id);
+        const elm = $("#" + id).get(0);
         this.dom[id] = elm;
         elm.value = _(id);
     }
@@ -33,14 +33,14 @@ SQL.KeyManager.prototype.build = function () {
         "keyavaillabel",
     ];
     for (let id of ids) {
-        const elm = OZ.$(id);
+        const elm = $("#" + id).get(0);
         elm.innerHTML = _(id);
     }
 
     const types = ["PRIMARY", "INDEX", "UNIQUE", "FULLTEXT"];
-    OZ.DOM.clear(this.dom.type);
+    $(this.dom.type).empty();
     for (let type of types) {
-        const o = OZ.DOM.elm("option");
+        const o = $("<option></option>").get(0);
         o.innerHTML = type;
         o.value = type;
         this.dom.type.appendChild(o);
@@ -48,15 +48,15 @@ SQL.KeyManager.prototype.build = function () {
 
     this.purge = this.purge.bind(this);
 
-    OZ.Event.add(this.dom.list, "change", this.listchange.bind(this));
-    OZ.Event.add(this.dom.type, "change", this.typechange.bind(this));
-    OZ.Event.add(this.dom.name, "keyup", this.namechange.bind(this));
-    OZ.Event.add(this.dom.keyadd, "click", this.add.bind(this));
-    OZ.Event.add(this.dom.keyremove, "click", this.remove.bind(this));
-    OZ.Event.add(this.dom.left, "click", this.left.bind(this));
-    OZ.Event.add(this.dom.right, "click", this.right.bind(this));
+    $(this.dom.list).on("change", this.listchange.bind(this));
+    $(this.dom.type).on("change", this.typechange.bind(this));
+    $(this.dom.name).on("keyup", this.namechange.bind(this));
+    $(this.dom.keyadd).on("click", this.add.bind(this));
+    $(this.dom.keyremove).on("click", this.remove.bind(this));
+    $(this.dom.left).on("click", this.left.bind(this));
+    $(this.dom.right).on("click", this.right.bind(this));
 
-    this.dom.container.parentNode.removeChild(this.dom.container);
+    $(this.dom.container).detach();
 };
 
 SQL.KeyManager.prototype.listchange = function (e) {
@@ -108,10 +108,10 @@ SQL.KeyManager.prototype.sync = function (table) {
         table.getTitle()
     );
 
-    OZ.DOM.clear(this.dom.list);
+    $(this.dom.list).empty();
     for (let i = 0; i < table.keys.length; i++) {
         const k = table.keys[i];
-        const o = OZ.DOM.elm("option");
+        const o = $("<option></option>").get(0);
         this.dom.list.appendChild(o);
         const str = i + 1 + ": " + k.getLabel();
         o.innerHTML = str;
@@ -145,20 +145,20 @@ SQL.KeyManager.prototype.switchTo = function (index) {
         }
     }
 
-    OZ.DOM.clear(this.dom.fields);
+    $(this.dom.fields).empty();
     for (let row of k.rows) {
-        const o = OZ.DOM.elm("option");
+        const o = $("<option></option>").get(0);
         o.innerHTML = row.getTitle();
         o.value = o.innerHTML;
         this.dom.fields.appendChild(o);
     }
 
-    OZ.DOM.clear(this.dom.avail);
+    $(this.dom.avail).empty();
     for (let row of this.table.rows) {
         if (k.rows.indexOf(row) != -1) {
             continue;
         }
-        const o = OZ.DOM.elm("option");
+        const o = $("<option></option>").get(0);
         o.innerHTML = row.getTitle();
         o.value = o.innerHTML;
         this.dom.avail.appendChild(o);
@@ -166,8 +166,8 @@ SQL.KeyManager.prototype.switchTo = function (index) {
 };
 
 SQL.KeyManager.prototype.disable = function () {
-    OZ.DOM.clear(this.dom.fields);
-    OZ.DOM.clear(this.dom.avail);
+    $(this.dom.fields).empty();
+    $(this.dom.avail).empty();
     this.dom.keyremove.disabled = true;
     this.dom.left.disabled = true;
     this.dom.right.disabled = true;

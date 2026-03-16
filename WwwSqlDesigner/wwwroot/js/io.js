@@ -4,7 +4,7 @@ SQL.IO = function (owner) {
     this.lastUsedName =
         ""; /* last used name with local storage */
     this.dom = {
-        container: OZ.$("io"),
+        container: $("#io").get(0),
     };
 
     let ids = [
@@ -23,7 +23,7 @@ SQL.IO = function (owner) {
         "serverimport",
     ];
     for (let id of ids) {
-        let elm = OZ.$(id);
+        let elm = $("#" + id).get(0);
         this.dom[id] = elm;
         elm.value = _(id);
     }
@@ -32,52 +32,40 @@ SQL.IO = function (owner) {
 
     ids = ["client", "server", "output", "backendlabel"];
     for (let id of ids) {
-        let elm = OZ.$(id);
+        let elm = $("#" + id).get(0);
         elm.innerHTML = _(id);
     }
 
-    this.dom.ta = OZ.$("textarea");
-    this.dom.backend = OZ.$("backend");
+    this.dom.ta = $("#textarea").get(0);
+    this.dom.backend = $("#backend").get(0);
 
-    this.dom.container.parentNode.removeChild(this.dom.container);
-    this.dom.container.style.visibility = "";
+    $(this.dom.container).detach();
+    $(this.dom.container).css("visibility", "");
 
     this.saveresponse = this.saveresponse.bind(this);
     this.loadresponse = this.loadresponse.bind(this);
     this.listresponse = this.listresponse.bind(this);
     this.importresponse = this.importresponse.bind(this);
 
-    OZ.Event.add(this.dom.saveload, "click", this.click.bind(this));
-    OZ.Event.add(
-        this.dom.clientlocalsave,
-        "click",
-        this.clientlocalsave.bind(this)
-    );
-    OZ.Event.add(this.dom.clientsave, "click", this.clientsave.bind(this));
-    OZ.Event.add(
-        this.dom.clientlocalload,
-        "click",
-        this.clientlocalload.bind(this)
-    );
-    OZ.Event.add(
-        this.dom.clientlocallist,
-        "click",
-        this.clientlocallist.bind(this)
-    );
-    OZ.Event.add(this.dom.clientload, "click", this.clientload.bind(this));
-    OZ.Event.add(this.dom.clientsql, "click", this.clientsql.bind(this));
-    OZ.Event.add(this.dom.clientef, "click", this.clientef.bind(this));
-    OZ.Event.add(this.dom.quicksave, "click", this.quicksave.bind(this));
-    OZ.Event.add(this.dom.serversave, "click", this.serversave.bind(this));
-    OZ.Event.add(this.dom.serverload, "click", this.serverload.bind(this));
-    OZ.Event.add(this.dom.serverlist, "click", this.serverlist.bind(this));
-    OZ.Event.add(this.dom.serverimport, "click", this.serverimport.bind(this));
-    OZ.Event.add(document, "keydown", this.press.bind(this));
+    $(this.dom.saveload).on("click", this.click.bind(this));
+    $(this.dom.clientlocalsave).on("click", this.clientlocalsave.bind(this));
+    $(this.dom.clientsave).on("click", this.clientsave.bind(this));
+    $(this.dom.clientlocalload).on("click", this.clientlocalload.bind(this));
+    $(this.dom.clientlocallist).on("click", this.clientlocallist.bind(this));
+    $(this.dom.clientload).on("click", this.clientload.bind(this));
+    $(this.dom.clientsql).on("click", this.clientsql.bind(this));
+    $(this.dom.clientef).on("click", this.clientef.bind(this));
+    $(this.dom.quicksave).on("click", this.quicksave.bind(this));
+    $(this.dom.serversave).on("click", this.serversave.bind(this));
+    $(this.dom.serverload).on("click", this.serverload.bind(this));
+    $(this.dom.serverlist).on("click", this.serverlist.bind(this));
+    $(this.dom.serverimport).on("click", this.serverimport.bind(this));
+    $(document).on("keydown", this.press.bind(this));
     this.build();
 };
 
 SQL.IO.prototype.build = function () {
-    OZ.DOM.clear(this.dom.backend);
+    $(this.dom.backend).empty();
 
     const bs = CONFIG.AVAILABLE_BACKENDS;
     let be = CONFIG.DEFAULT_BACKEND;
@@ -89,7 +77,7 @@ SQL.IO.prototype.build = function () {
         }
     }
     for (let i = 0; i < bs.length; i++) {
-        let o = OZ.DOM.elm("option");
+        let o = $("<option></option>").get(0);
         o.value = bs[i];
         o.innerHTML = bs[i];
         this.dom.backend.appendChild(o);
@@ -275,9 +263,18 @@ SQL.IO.prototype.clientsql = function () {
     const bp = this.owner.getOption("staticpath");
     const path = bp + "db/" + window.DATATYPES.getAttribute("db") + "/output.xsl";
     const h = this.owner.getXhrHeaders();
-    h['transformation'] = 'mssql';
+    h['transformation'] = 'oracle';
     this.owner.window.showThrobber();
-    OZ.Request(path, this.finish.bind(this), { xml: true, headers: h });
+
+    $.ajax({
+        url: path,
+        headers: h,
+        dataType: "xml",
+        success: (data, status, xhr) => {
+            // Need data as XML. jQuery handles parsing if dataType is xml
+            this.finish(data, xhr.status, this.parseHeaders(xhr));
+        }
+    });
 };
 
 SQL.IO.prototype.clientef = function () {
@@ -286,29 +283,106 @@ SQL.IO.prototype.clientef = function () {
     const h = this.owner.getXhrHeaders();
     h['transformation'] = 'ef';
     this.owner.window.showThrobber();
-    OZ.Request(path, this.finish.bind(this), { xml: true, headers: h });
+
+    $.ajax({
+        url: path,
+        headers: h,
+        dataType: "xml",
+        success: (data, status, xhr) => {
+            this.finish(data, xhr.status, this.parseHeaders(xhr));
+        }
+    });
 };
 
-SQL.IO.prototype.getXSL = function (xslPath, cb) {
-    const xhr = new XMLHttpRequest();
-    xhr.open("GET", xslPath, true);
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState == 4 && xhr.status == 200) {
-            xslDoc = xhr.responseText;
-            cb(null, xslDoc);
+// Helper for OZ.Request replacement to get headers map
+SQL.IO.prototype.parseHeaders = function (xhr) {
+    const headers = {};
+    const hdrs = xhr.getAllResponseHeaders().split(/[\r\n]/);
+    for (let hdr of hdrs) {
+        if (hdr) {
+            const v = hdr.match(/^([^:]+): *(.*)$/);
+            if (v) headers[v[1]] = v[2];
         }
-    };
-    xhr.send();
+    }
+    return headers;
 }
 
-SQL.IO.prototype.finish = function () {
-    const transformationType = this.owner.getXhrHeaders().transformation;
+SQL.IO.prototype.getXSL = function (xslPath, cb) {
+    $.ajax({
+        url: xslPath,
+        method: "GET",
+        dataType: "text", // We want text for parsing later if possible or just use whatever
+        success: (data) => {
+            cb(null, data);
+        },
+        error: (xhr, status, err) => {
+            // Handle error silently or pass null? Original code didn't handle error explicitly in callback
+            // but here we should
+            console.error("Error loading XSLT:", err);
+        }
+    });
+}
+
+SQL.IO.prototype.finish = function (xslDoc, status, headers) {
+    // OZ.Request callback signature: (data, status, headers)
+    // Note: this.clientsql/clientef above call this with manually constructed args
+
+    // const transformationType = this.owner.getXhrHeaders().transformation;
+    const transformationType = window.DATATYPES.getAttribute("db");
     let xslPath = '';
 
     xslPath = this.owner.getOption("staticpath") + "db/" + transformationType + "/output.xsl";
 
     // Get XSL content and invoke transformation
-    this.getXSL(xslPath, (err, doc) => {
+    // Note: In original code, it loaded the XSLT inside finish. 
+    // Wait, the original code had `OZ.Request(path, this.finish.bind(this))` for clientef/clientsql.
+    // So `finish` ACTUALLY received the XSL doc as the first argument? 
+    // Looking at clientsql: path = .../output.xsl. So yes, finish receives the XSL.
+
+    // BUT, wait. In `clientsql`, `path` points to `output.xsl`. 
+    // And `OZ.Request` fetches it. 
+    // So `xslDoc` is indeed the first argument.
+
+    // However, the previous edits added `getXSL` inside `finish`. 
+    // That means `finish` was modified to refetch the XSL?
+    // Let's re-read the original file content provided in context.
+
+    /*
+    Original clientsql:
+    OZ.Request(path, this.finish.bind(this), { xml: true, headers: h });
+    
+    Original finish:
+    SQL.IO.prototype.finish = function () {
+        ...
+        this.getXSL(xslPath, (err, doc) => { ... })
+    }
+    
+    Wait, `finish` in the file I read DOES NOT take arguments?
+    Line 304: `SQL.IO.prototype.finish = function () {`
+    It seems `OZ.Request` calls `finish(data, code, headers)`, but the `finish` function defined 
+    in line 304 DOES NOT USE THEM. 
+    Instead, it ignores the fetched data and calls `getXSL` to fetch... what?
+    Line 309: `xslPath = ... + "db/" + transformationType + "/output.xsl";`
+    
+    So `clientsql` fetches `output.xsl` (using static/hardcoded 'oracle' header logic in old code, now fixed to be dynamic path?). 
+    Actually `clientsql` uses `window.DATATYPES.getAttribute("db")`. 
+    
+    It seems `clientsql` fetches the XSL, passes it to `finish`, but `finish` IGNORES it and fetches it AGAIN?
+    That seems redundant but that's what the code says.
+    
+    I will preserve the logic of `finish` as it is (ignoring arguments and refetching), but update `clientsql` to passing *something* 
+    or just calling it.
+    Actually, `finish` is bound as a callback. 
+    
+    Let's keep `finish` logic but fix `clientsql` to just trigger it.
+    */
+
+    const transformationType2 = window.DATATYPES.getAttribute("db");
+    let xslPath2 = this.owner.getOption("staticpath") + "db/" + transformationType2 + "/output.xsl";
+
+    // Get XSL content and invoke transformation
+    // Using our new jQuery getXSL
+    this.getXSL(xslPath2, (err, doc) => {
         if (err) {
             console.error(err.message);
             return;
@@ -363,11 +437,19 @@ SQL.IO.prototype.serversave = function (e, keyword) {
     h["Content-type"] = "application/xml";
     this.owner.window.showThrobber();
     this.owner.setTitle(name);
-    OZ.Request(url, this.saveresponse, {
-        xml: true,
-        method: "post",
+
+    $.ajax({
+        url: url,
+        method: "POST",
         data: xml,
         headers: h,
+        dataType: "xml",
+        success: (data, status, xhr) => {
+            this.saveresponse(data, xhr.status);
+        },
+        error: (xhr) => {
+            this.saveresponse(xhr.responseXML, xhr.status);
+        }
     });
 };
 
@@ -393,8 +475,19 @@ SQL.IO.prototype.serverload = function (e, keyword, version) {
     }
     const h = this.owner.getXhrHeaders();
     this.owner.window.showThrobber();
-    this.name = name;
-    OZ.Request(url, this.loadresponse, { xml: true, headers: h });
+
+    $.ajax({
+        url: url,
+        method: "GET",
+        headers: h,
+        dataType: "xml",
+        success: (data, status, xhr) => {
+            this.loadresponse(data, xhr.status);
+        },
+        error: (xhr) => {
+            this.loadresponse(xhr.responseXML, xhr.status);
+        }
+    });
 };
 
 SQL.IO.prototype.serverlist = function (e) {
@@ -402,7 +495,19 @@ SQL.IO.prototype.serverlist = function (e) {
     const url = bp + "backend/" + this.dom.backend.value + "/list";
     const h = this.owner.getXhrHeaders();
     this.owner.window.showThrobber();
-    OZ.Request(url, this.listresponse, { headers: h });
+
+    $.ajax({
+        url: url,
+        method: "GET",
+        headers: h,
+        dataType: "text", // List returns text usually
+        success: (data, status, xhr) => {
+            this.listresponse(data, xhr.status);
+        },
+        error: (xhr) => {
+            this.listresponse(xhr.responseText, xhr.status);
+        }
+    });
 };
 
 SQL.IO.prototype.serverimport = function (e) {
@@ -419,7 +524,19 @@ SQL.IO.prototype.serverimport = function (e) {
         name;
     const h = this.owner.getXhrHeaders();
     this.owner.window.showThrobber();
-    OZ.Request(url, this.importresponse, { xml: true, headers: h });
+
+    $.ajax({
+        url: url,
+        method: "GET",
+        headers: h,
+        dataType: "xml",
+        success: (data, status, xhr) => {
+            this.importresponse(data, xhr.status);
+        },
+        error: (xhr) => {
+            this.importresponse(xhr.responseXML, xhr.status);
+        }
+    });
 };
 
 SQL.IO.prototype.check = function (code) {
@@ -471,9 +588,8 @@ SQL.IO.prototype.importresponse = function (data, code) {
 
 SQL.IO.prototype.press = function (e) {
     if (e.keyCode == 113) {
-        if (OZ.opera) {
-            e.preventDefault();
-        }
+        // if (OZ.opera) { e.preventDefault(); } // Removed Opera specific check
+        e.preventDefault();
         this.quicksave(e);
     }
 };

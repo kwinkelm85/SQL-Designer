@@ -7,9 +7,9 @@ SQL.Designer = function () {
     this.title = document.title;
 
     SQL.Visual.apply(this);
-    new SQL.Toggle(OZ.$("toggle"));
+    new SQL.Toggle($("#toggle").get(0));
 
-    this.dom.container = OZ.$("area");
+    this.dom.container = $("#area").get(0);
     this.minSize = [
         this.dom.container.offsetWidth,
         this.dom.container.offsetHeight,
@@ -25,6 +25,47 @@ SQL.Designer = function () {
         this.svgNS = "http://www.w3.org/2000/svg";
         this.dom.svg = document.createElementNS(this.svgNS, "svg");
         this.dom.container.appendChild(this.dom.svg);
+
+        /* define markers */
+        const defs = document.createElementNS(this.svgNS, "defs");
+
+        // Zero or More (Child) - Crow's Foot
+        const markerMany = document.createElementNS(this.svgNS, "marker");
+        markerMany.setAttribute("id", "crowsfoot");
+        markerMany.setAttribute("viewBox", "0 0 10 10");
+        markerMany.setAttribute("refX", "10");
+        markerMany.setAttribute("refY", "5");
+        markerMany.setAttribute("markerUnits", "strokeWidth");
+        markerMany.setAttribute("markerWidth", "10");
+        markerMany.setAttribute("markerHeight", "8");
+        markerMany.setAttribute("orient", "auto");
+        const pathMany = document.createElementNS(this.svgNS, "path");
+        pathMany.setAttribute("d", "M 10 0 L 0 5 L 10 10 M 0 5 L 10 5"); // Trident shape (Fork opening left)
+        pathMany.setAttribute("fill", "none");
+        pathMany.setAttribute("stroke", "black");
+        pathMany.setAttribute("stroke-width", "1");
+        markerMany.appendChild(pathMany);
+        defs.appendChild(markerMany);
+
+        // One (Parent) - Simple Bar
+        const markerOne = document.createElementNS(this.svgNS, "marker");
+        markerOne.setAttribute("id", "one");
+        markerOne.setAttribute("viewBox", "0 0 10 10");
+        markerOne.setAttribute("refX", "0");
+        markerOne.setAttribute("refY", "5");
+        markerOne.setAttribute("markerUnits", "strokeWidth");
+        markerOne.setAttribute("markerWidth", "10");
+        markerOne.setAttribute("markerHeight", "10");
+        markerOne.setAttribute("orient", "auto");
+        const pathOne = document.createElementNS(this.svgNS, "path");
+        pathOne.setAttribute("d", "M 5 0 L 5 10"); // Vertical bar
+        pathOne.setAttribute("fill", "none");
+        pathOne.setAttribute("stroke", "black");
+        pathOne.setAttribute("stroke-width", "1");
+        markerOne.appendChild(pathOne);
+        defs.appendChild(markerOne);
+
+        this.dom.svg.appendChild(defs);
     }
 
     this.flag = 2;
@@ -58,9 +99,18 @@ SQL.Designer.prototype.requestLanguage = function () {
     const lang = this.getOption("locale");
     const bp = this.getOption("staticpath");
     const url = bp + "locale/" + lang + ".xml";
-    OZ.Request(url, this.languageResponse.bind(this), {
-        method: "get",
-        xml: true,
+
+    $.ajax({
+        url: url,
+        method: "GET",
+        dataType: "xml",
+        success: (data) => {
+            this.languageResponse(data);
+        },
+        error: (xhr) => {
+            // Fallback or error handling
+            this.languageResponse(null);
+        }
     });
 };
 
@@ -84,7 +134,18 @@ SQL.Designer.prototype.requestDB = function () {
     const db = this.getOption("db");
     const bp = this.getOption("staticpath");
     const url = bp + "db/" + db + "/datatypes.xml";
-    OZ.Request(url, this.dbResponse.bind(this), { method: "get", xml: true });
+
+    $.ajax({
+        url: url,
+        method: "GET",
+        dataType: "xml",
+        success: (data) => {
+            this.dbResponse(data);
+        },
+        error: () => {
+            this.dbResponse(null);
+        }
+    });
 };
 
 SQL.Designer.prototype.dbResponse = function (xmlDoc) {
@@ -94,6 +155,31 @@ SQL.Designer.prototype.dbResponse = function (xmlDoc) {
     this.flag--;
     if (!this.flag) {
         this.init2();
+    }
+};
+
+SQL.Designer.prototype.updateDB = function (db) {
+    const bp = this.getOption("staticpath");
+    const url = bp + "db/" + db + "/datatypes.xml";
+
+    $.ajax({
+        url: url,
+        method: "GET",
+        dataType: "xml",
+        success: (data) => {
+            this.dbUpdateResponse(data);
+        },
+        error: () => {
+            this.dbUpdateResponse(null);
+        }
+    });
+};
+
+SQL.Designer.prototype.dbUpdateResponse = function (xmlDoc) {
+    if (xmlDoc) {
+        window.DATATYPES = xmlDoc.documentElement;
+        this.typeIndex = false;
+        this.fkTypeFor = false;
     }
 };
 
@@ -127,7 +213,7 @@ SQL.Designer.prototype.init2 = function () {
 
     this.sync();
 
-    OZ.$("docs").value = _("docs");
+    $("#docs").val(_("docs"));
 
     const url = window.location.href;
     const regexKeyword = url.match(/keyword=([^&]+)/);
@@ -152,7 +238,7 @@ SQL.Designer.prototype.getMaxZ = function () {
             max = z;
         }
     }
-    OZ.$("controls").style.zIndex = max + 5;
+    $("#controls").css("zIndex", max + 5);
     return max;
 };
 
@@ -291,8 +377,9 @@ SQL.Designer.prototype.clearTables = function () {
 };
 
 SQL.Designer.prototype.alignTables = function () {
-    const win = OZ.DOM.win();
-    const avail = win[0] - OZ.$("bar").offsetWidth;
+    const winWidth = $(window).width();
+    const barWidth = $("#bar").outerWidth();
+    const avail = winWidth - barWidth;
     let x = 10;
     let y = 10;
     let max = 0;

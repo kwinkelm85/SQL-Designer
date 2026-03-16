@@ -1,0 +1,1643 @@
+PROCEDURE DDL_AUDIT_NOTIFICATION        (debug_audit_emails             IN     BOOLEAN  DEFAULT FALSE,
+                                                           debug_specific_database        IN     VARCHAR2 DEFAULT null)
+AS
+/*******************************************************************************
+ * Purpose: Review the content of the DDL_AUDIT tables in all relevant
+ *          database instances to determine if any database objects of
+ *          interest to the Data Architecture Group have been created,
+ *          dropped, altered or renamed.
+ *          Then send one email message per database instance to the
+ *          AG ITSD DATA distribution list that summarizes the changes.
+ *
+ * Input Parameters
+ *
+ * DEBUG_AUDIT_EMAILS - Set this parameter to TRUE to have the emails sent
+ *                      to the developer instead of the DA Group.
+ *                      This is useful when running the procedure manually
+ *                      (i.e. not from DBMS_JOB).
+ *
+ * Change History
+ *
+ * Developer        Date         Details
+ * ---------------  -----------  -----------------------------------------------
+ * Gary Belleville  2006-JUN-28  Original version.
+ * Gary Belleville  2006-JUL-20  In the summary email, display UNKNOWN instead
+ *                               of no value when the LOGIN_OS_USER_ID is NULL.
+ * Gary Bellleville 2006-OCT-26  Added instructions on how to look up the
+ *                               DESCHECK password to the summary email.
+ * Gary Belleville  2007-JAN-16  - Modified get_audit_last_run_date to reflect
+ *                                 the new JOB ID of the job that initiates this
+ *                                 procedure.
+ *                               - Modified get_audit_last_run_date so that
+ *                                 last_run_date defaults to yesterday (instead
+ *                                 of one week ago) if the job has not yet
+ *                                 been successfully run.
+ * Gary Belleville  2007-MAY-17  Added the procedure send_error_email. This
+ *                               procedure is invoked whenever an exception
+ *                               is raised in the check_for_audit_objects
+ *                               or send_summary_email procedures.  Previously,
+ *                               exceptions in these procedures would result
+ *                               in a call to send_missing_audit_objs_email,
+ *                               which would result in a misleading email (e.g.
+ *                               if the DESCHECK password was inadvertently
+ *                               changed the email would erroneously indicate
+ *                               that the audit objects were missing).
+ * Gary Belleville  2007-DEC-10  Changed the SMTP server from
+ *                               easter.ag.gov.bc.ca to bermuda.ag.gov.bc.ca.
+ * Gary Belleville  2007-DEC-21  Changed the audit email sending address and
+ *                               the audit email from header to
+ *                               noreply@gov.bc.ca so that Out of Office
+ *                               messages from members of
+ *                               ITSDDATA@Victoria1.gov.bc.ca do not get
+ *                               distributed to the group.
+ * Gary Belleville  2008-JAN-03  Modified send_summary_email so that emails
+ *                               with no database changes are Low priority and
+ *                               those with some changes are Normal priority.
+ * Gary Belleville  2008-FEB-14  Removed code that CC'd me on all emails.
+ *                               Changed the value of the
+ *                               debug_audit_email_rcpnt_addr variable so that
+ *                               emails are sent to Dona Yee instead of me
+ *                               when this procedure is run in debug mode.
+ * Adam Erickson    2026-MAR-03  Added audit_email_server to soft-code the location
+ *                               that sends the email (localhost vs apps.smtp.gov.bc.ca)
+ *                  2026-MAR-05  Also removed solo LF - chr(10) - characters.
+ ******************************************************************************/
+
+   audit_email_from_header      VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_FROM_HEADER');
+--      DEFAULT 'DDL Audit Facility" <noreply@gov.bc.ca>';
+
+
+
+   audit_email_recipient_addr   VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_TO_ADDR');
+
+
+--      DEFAULT 'ITSDDATA@Victoria1.gov.bc.ca';
+
+
+
+   audit_email_sending_addr     VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_FROM_ADDR');
+
+
+--      DEFAULT 'noreply@gov.bc.ca';
+
+
+
+   audit_email_to_header        VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_TO_HEADER');
+
+
+--      DEFAULT '"AG ITSD DATA" <ITSDDATA@Victoria1.gov.bc.ca>';
+
+
+
+   audit_email_server           VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_SERVER');
+
+
+
+   audit_table_found            BOOLEAN;
+
+
+   audit_trigger_found          BOOLEAN;
+
+
+   c                            utl_smtp.connection;
+
+
+   dbms_job_exists              BOOLEAN;
+
+
+   ddl_run_since_date           DATE;
+
+
+   vLineBreak                   VARCHAR2(10) := chr(13) || chr(10);
+
+
+
+   -- Emails are only sent to the address below when the input parameter
+
+
+   -- debug_audit_emails is set to TRUE.
+
+
+   debug_audit_email_rcpnt_addr VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_DEBUG_RECIPIENT');
+
+
+--      DEFAULT 'adam.erickson@gov.bc.ca';
+
+
+   error_msg                    VARCHAR2(512);
+
+
+
+   CURSOR des_owner_db_links   IS
+
+
+      SELECT db_link name
+
+
+        FROM user_db_links
+
+
+       WHERE (debug_specific_database is null
+
+
+              OR db_link = debug_specific_database)
+
+
+       ORDER BY name DESC;
+
+
+
+   PROCEDURE get_audit_last_run_date (last_run_date  OUT DATE,
+
+
+                                      dbms_job_found OUT BOOLEAN) AS
+
+
+   /*****************************************************************************
+
+
+    * Purpose: Retrieve the most recent date/time that the
+
+
+    *          DDL_AUDIT_NOTIFICATION procedure successfully completed (when
+
+
+    *          initiated via DBMS_JOB).
+
+
+    ****************************************************************************/
+
+
+   BEGIN
+
+
+      dbms_job_found := TRUE;
+
+
+      -- Retrieve the last_date column from user_jobs to determine the most
+
+
+      -- recent completion date/time of the job that runs DDL_AUDIT_NOTIFICATION.
+
+
+      -- If the job has not yet been succesfully run, last_date will be null so
+
+
+      -- default last_run_date to one day ago.
+
+
+--vhd_begin
+
+
+/*    SELECT NVL(last_date, SYSDATE - 1)
+
+
+      INTO last_run_date
+
+
+      FROM user_jobs
+
+
+     WHERE job = 71;
+
+
+    -- NOTE: If the job is removed and then re-created (via DBMS_JOB.SUBMIT),
+
+
+    --       the job number above will need to be changed.
+
+
+--vhd_end
+
+
+*/
+
+
+      select nvl(last_start_date, SYSDATE - 1)
+
+
+        into last_run_date
+
+
+        from user_scheduler_jobs
+
+
+        where upper(job_name) = 'DDL_AUDIT_TIME_JOB';
+
+
+   EXCEPTION
+
+
+      WHEN NO_DATA_FOUND THEN
+
+
+         -- If the job that runs DDL_AUDIT_NOTIFICATION cannot be found then
+
+
+         -- default last_run_date to one week ago.
+
+
+         last_run_date  := SYSDATE - 7;
+
+
+         dbms_job_found := FALSE;
+
+
+   END get_audit_last_run_date;
+
+
+
+   PROCEDURE write_mime_header(name IN VARCHAR2, header IN VARCHAR2) AS
+
+
+   /*****************************************************************************
+
+
+    * Purpose: Write a line of the mime header of an email message.
+
+
+    ****************************************************************************/
+
+
+
+   BEGIN
+
+
+      utl_smtp.write_data(c, name || ': ' || header || utl_tcp.CRLF);
+
+
+   END write_mime_header;
+
+
+
+   PROCEDURE check_for_audit_objects(db_link        IN  VARCHAR2,
+
+
+                                     table_found    OUT BOOLEAN,
+
+
+                                     trigger_found  OUT BOOLEAN,
+
+
+                                     error_msg      OUT VARCHAR2) AS
+
+
+   /*****************************************************************************
+
+
+    * Purpose: Determine if the DDL_AUDIT table and the related ON DATABASE
+
+
+    *          trigger are in a particular database instance.
+
+
+    ****************************************************************************/
+
+
+      ddl_audit_table_count         NUMBER;
+
+
+      audit_table_exists_sql_stmt   VARCHAR2(4000) DEFAULT
+
+
+         'SELECT COUNT(''DDL_AUDIT tables'')' ||
+
+
+         '  FROM DBA_TABLES@' || db_link ||
+
+
+        ' WHERE OWNER=''DESCHECK'' AND TABLE_NAME=''DDL_AUDIT''';
+
+
+      ddl_audit_trigger_count       NUMBER;
+
+
+      audit_trigger_exists_sql_stmt VARCHAR2(4000) DEFAULT
+
+
+         'SELECT COUNT(''DDL audit triggers'')' ||
+
+
+         '  FROM DBA_TRIGGERS@' || db_link ||
+
+
+         ' WHERE OWNER=''DESCHECK'' AND ' ||
+
+
+         '       TRIGGER_NAME=''AFTER_ALTER_CREATE_DROP_RENAME''';
+
+
+   BEGIN
+
+
+      table_found   := FALSE;
+
+
+      trigger_found := FALSE;
+
+
+      error_msg     := NULL;
+
+
+      -- Determine if the audit table is in the database.
+
+
+      EXECUTE IMMEDIATE audit_table_exists_sql_stmt
+
+
+         INTO ddl_audit_table_count;
+
+
+      IF ddl_audit_table_count > 0 THEN
+
+
+         table_found := TRUE;
+
+
+      END IF;
+
+
+      -- Determine if the audit trigger is in the database.
+
+
+      EXECUTE IMMEDIATE audit_trigger_exists_sql_stmt
+
+
+         INTO ddl_audit_trigger_count;
+
+
+      IF ddl_audit_trigger_count > 0 THEN
+
+
+         trigger_found := TRUE;
+
+
+      END IF;
+
+
+   EXCEPTION
+
+
+      WHEN OTHERS THEN
+
+
+         -- If any errors occur then just pass the error message back to
+
+
+         -- the caller.
+
+
+         error_msg := SQLERRM;
+
+
+   END check_for_audit_objects;
+
+
+
+   PROCEDURE send_error_email(db_link        IN VARCHAR2,
+
+
+                              error_msg      IN VARCHAR2,
+
+
+                              error_location IN VARCHAR2) AS
+
+
+   /*****************************************************************************
+
+
+    * Purpose: Send an email message to the AG ITSD DATA distribution list
+
+
+    *          informing them that an error occurred before the summary
+
+
+    *          email could be sent for a particular database instance.
+
+
+    *          This error will typically be the result of an SQL issue.
+
+
+    ****************************************************************************/
+
+
+   BEGIN
+
+
+      -- Specify the sender of the message
+
+
+      utl_smtp.mail(c, audit_email_sending_addr);
+
+
+      -- Specify the recipient of the message
+
+
+      IF debug_audit_emails THEN
+
+
+         utl_smtp.rcpt(c, debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         utl_smtp.rcpt(c, audit_email_recipient_addr);
+
+
+      END IF;
+
+
+      -- Send the DATA command to the SMTP server.
+
+
+      utl_smtp.open_data(c);
+
+
+      --
+
+
+      -- Create the message header by calling write_mime_header for each component
+
+
+      --
+
+
+      write_mime_header('From', audit_email_from_header);
+
+
+
+      IF debug_audit_emails THEN
+
+
+         write_mime_header('To',   debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         write_mime_header('To',   audit_email_to_header);
+
+
+      END IF;
+
+
+
+      write_mime_header('Content-Type', 'text/html');
+
+
+      --
+
+
+      -- Set the message priority to High and define an appropriate subject line
+
+
+      -- and message body.
+
+
+      --
+
+
+      write_mime_header('X-Priority', 1);
+
+
+      write_mime_header('Subject', db_link ||
+
+
+                        ': Error creating the DDL Audit daily email!');
+
+
+      utl_smtp.write_data(c, '<html>' || '<body style="' ||
+
+
+                             'font-family: Arial;font-size: 10pt">');
+
+
+      utl_smtp.write_data(c, 'The DDL Audit Facility was unable to create the ' ||
+
+
+                             'daily summary email for ' || db_link || '.');
+
+
+-- 2022-06-07  atericks  Changed <percent>nbsp to chr(10) below
+
+
+      utl_smtp.write_data(c, '<p>The following unexpected error was ' ||
+
+
+                             'encountered in ' || error_location ||
+
+
+                             ': <br><i>'||chr(38)||'nbsp;'||chr(38)||'nbsp;' || error_msg || '</i>');
+
+
+      utl_smtp.write_data(c, '</body></html>');
+
+
+      -- End the email message
+
+
+      utl_smtp.close_data(c);
+
+
+   END send_error_email;
+
+
+
+   PROCEDURE send_missing_audit_objs_email(db_link        IN VARCHAR2,
+
+
+                                           table_found    IN BOOLEAN,
+
+
+                                           trigger_found  IN BOOLEAN) AS
+
+
+   /*****************************************************************************
+
+
+    * Purpose: Send an email message to the AG ITSD DATA distribution list
+
+
+    *          informing them that the DDL_AUDIT table and/or ON DATABASE
+
+
+    *          trigger were not found in a particular database instance.
+
+
+    ****************************************************************************/
+
+
+   BEGIN
+
+
+      -- Specify the sender of the message
+
+
+      utl_smtp.mail(c, audit_email_sending_addr);
+
+
+      -- Specify the recipient of the message
+
+
+      IF debug_audit_emails THEN
+
+
+         utl_smtp.rcpt(c, debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         utl_smtp.rcpt(c, audit_email_recipient_addr);
+
+
+      END IF;
+
+
+      -- Send the DATA command to the SMTP server.
+
+
+      utl_smtp.open_data(c);
+
+
+      --
+
+
+      -- Create the message header by calling write_mime_header for each component
+
+
+      --
+
+
+      write_mime_header('From', audit_email_from_header);
+
+
+
+      IF debug_audit_emails THEN
+
+
+         write_mime_header('To',   debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         write_mime_header('To',   audit_email_to_header);
+
+
+      END IF;
+
+
+
+      write_mime_header('Content-Type', 'text/html');
+
+
+      --
+
+
+      -- Set the message priority to High and define an appropriate subject line
+
+
+      -- and message body.
+
+
+      --
+
+
+      write_mime_header('X-Priority', 1);
+
+
+      IF table_found AND NOT trigger_found THEN
+
+
+         write_mime_header('Subject', db_link ||
+
+
+                           ': DDL audit trigger not found!');
+
+
+         utl_smtp.write_data(c, '<html>' || '<body style="' ||
+
+
+                                'font-family: Arial;font-size: 10pt">');
+
+
+         utl_smtp.write_data(c, 'The AFTER_ALTER_CREATE_DROP_RENAME trigger ' ||
+
+
+                                'was not found in the DESCHECK schema in ' ||
+
+
+                                db_link || '.');
+
+
+         utl_smtp.write_data(c, '</body></html>');
+
+
+      ELSIF trigger_found AND NOT table_found THEN
+
+
+         write_mime_header('Subject', db_link ||
+
+
+                           ': DDL audit table not found!');
+
+
+         utl_smtp.write_data(c, '<html>' || '<body style="' ||
+
+
+                                'font-family: Arial;font-size: 10pt">');
+
+
+         utl_smtp.write_data(c, 'The DDL_AUDIT table ' ||
+
+
+                                'was not found in the DESCHECK schema in ' ||
+
+
+                                db_link || '.');
+
+
+         utl_smtp.write_data(c, '</body></html>');
+
+
+      ELSE
+
+
+         write_mime_header('Subject', db_link ||
+
+
+                           ': DDL audit objects not found!');
+
+
+         utl_smtp.write_data(c, '<html>' || '<body style="' ||
+
+
+                                'font-family: Arial;font-size: 10pt">');
+
+
+         utl_smtp.write_data(c, 'The DDL_AUDIT table and the ' ||
+
+
+                                'AFTER_ALTER_CREATE_DROP_RENAME trigger ' ||
+
+
+                                'were not found in the DESCHECK schema in ' ||
+
+
+                                db_link || '.');
+
+
+         utl_smtp.write_data(c, '</body></html>');
+
+
+      END IF;
+
+
+      -- End the email message
+
+
+      utl_smtp.close_data(c);
+
+
+   END send_missing_audit_objs_email;
+
+
+
+   PROCEDURE send_missing_dbms_job_email AS
+
+
+   /*****************************************************************************
+
+
+    * Purpose: Send an email message to the AG ITSD DATA distribution list
+
+
+    *          informing them that the job that runs DDL_AUDIT_NOTIFICATION
+
+
+    *          could not be found.
+
+
+    ****************************************************************************/
+
+
+   BEGIN
+
+
+      -- Specify the sender of the message
+
+
+      utl_smtp.mail(c, audit_email_sending_addr);
+
+
+      -- Specify the recipient of the message
+
+
+      IF debug_audit_emails THEN
+
+
+         utl_smtp.rcpt(c, debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         utl_smtp.rcpt(c, audit_email_recipient_addr);
+
+
+      END IF;
+
+
+      -- Send the DATA command to the SMTP server.
+
+
+      utl_smtp.open_data(c);
+
+
+      --
+
+
+      -- Create the message header by calling write_mime_header for each component
+
+
+      --
+
+
+      write_mime_header('From', audit_email_from_header);
+
+
+
+      IF debug_audit_emails THEN
+
+
+         write_mime_header('To',   debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         write_mime_header('To',   audit_email_to_header);
+
+
+      END IF;
+
+
+
+      write_mime_header('Content-Type', 'text/html');
+
+
+      --
+
+
+      -- Set the message priority to High and define an appropriate subject line
+
+
+      -- and message body.
+
+
+      --
+
+
+      write_mime_header('X-Priority', 1);
+
+
+      write_mime_header('Subject',
+
+
+                        'DBMS_JOB entry for DDL_AUDIT_NOTIFICATION not found!');
+
+
+      utl_smtp.write_data(c, '<html>' || '<body style="' ||
+
+
+                             'font-family: Arial;font-size: 10pt">');
+
+
+      utl_smtp.write_data(c, 'The job to run the DDL_AUDIT_NOTIFICATION ' ||
+
+
+                             'procedure could not be found in the view ' ||
+
+
+                             'USER_JOBS (in the database containing the ' ||
+
+
+                             'Designer repository).' ||
+
+
+                             '<p>If an appropriate entry already ' ||
+
+
+                             'exists in USER_JOBS then update the DES_OWNER.' ||
+
+
+                             'DDL_AUDIT_NOTIFICATION code to retrieve it ' ||
+
+
+                             'using the correct value of the JOB column.  ' ||
+
+
+                             'Otherwise, run the DES_OWNER.DDL_AUDIT_JOB_' ||
+
+
+                             'CREATION procedure to create the job and then ' ||
+
+
+                             'update the DES_OWNER.DDL_AUDIT_NOTIFICATION code.');
+
+
+      utl_smtp.write_data(c, '</body></html>');
+
+
+      -- End the email message
+
+
+      utl_smtp.close_data(c);
+
+
+   END send_missing_dbms_job_email;
+
+
+
+   PROCEDURE send_summary_email(db_link            IN VARCHAR2,
+
+
+                                threshold_date IN DATE) AS
+
+
+   /*****************************************************************************
+
+
+    * Purpose: Review the content of the DDL_AUDIT tables in a given
+
+
+    *          database instances to determine if any database objects of
+
+
+    *          interest to the Data Architecture Group have been created,
+
+
+    *          dropped, altered or renamed.
+
+
+    *          Then send an email message to the AG ITSD DATA distribution list
+
+
+    *          that summarizes the changes to that database instance.
+
+
+    ****************************************************************************/
+
+
+      db_object_change_count        NUMBER DEFAULT 0;
+
+
+      audit_summary_sql_stmt        VARCHAR2(4000) DEFAULT
+
+
+         'SELECT object_owner_user_id,' ||
+
+
+         '       NVL(UPPER(login_os_user_id),''UNKNOWN''),' ||
+
+
+         '       ddl_operation_nm, object_type_nm, COUNT(''*'')' ||
+
+
+         '  FROM DDL_AUDIT@' || db_link ||
+
+
+         ' WHERE DDL_RUN_DTM >= :1' ||
+
+
+         ' GROUP BY object_owner_user_id,' ||
+
+
+         '          NVL(UPPER(login_os_user_id),''UNKNOWN''),' ||
+
+
+         '          ddl_operation_nm, object_type_nm' ||
+
+
+         ' ORDER BY object_owner_user_id,' ||
+
+
+         '          NVL(UPPER(login_os_user_id),''UNKNOWN''),' ||
+
+
+         '          ddl_operation_nm, object_type_nm';
+
+
+
+      prev_object_owner_user_id     VARCHAR2(30)  DEFAULT '###';
+
+
+      prev_login_os_user_id         VARCHAR2(256) DEFAULT '###';
+
+
+
+      TYPE audit_summary_rec        IS RECORD (
+
+
+         object_owner_user_id        VARCHAR2(30),
+
+
+         login_os_user_id            VARCHAR2(256),
+
+
+         ddl_operation_nm            VARCHAR2(20),
+
+
+         object_type_nm              VARCHAR2(20),
+
+
+         ddl_statements_executed     NUMBER);
+
+
+      TYPE audit_summary_tab_type   IS TABLE OF audit_summary_rec
+
+
+         INDEX BY BINARY_INTEGER;
+
+
+      audit_summary_tab             audit_summary_tab_type;
+
+
+
+      totalStatements                number := 0;
+
+
+
+   BEGIN
+
+
+      -- Query the DDL_AUDIT table in the target database to determine how
+
+
+      -- many DDL statements have been executed since the threshold date/time.
+
+
+      EXECUTE IMMEDIATE audit_summary_sql_stmt
+
+
+         BULK COLLECT INTO audit_summary_tab
+
+
+         USING threshold_date;
+
+
+      -- Determine the number of database objects that have changed since
+
+
+      -- the threshold date/time.
+
+
+      FOR i in 1..NVL(audit_summary_tab.last,0) LOOP
+
+
+         db_object_change_count := db_object_change_count +
+
+
+                                   audit_summary_tab(i).ddl_statements_executed;
+
+
+      END LOOP;
+
+
+      -- Specify the sender of the message
+
+
+      utl_smtp.mail(c, audit_email_sending_addr);
+
+
+      -- Specify the recipient of the message
+
+
+      IF debug_audit_emails THEN
+
+
+         utl_smtp.rcpt(c, debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         utl_smtp.rcpt(c, audit_email_recipient_addr);
+
+
+      END IF;
+
+
+      -- Send the DATA command to the SMTP server.
+
+
+      utl_smtp.open_data(c);
+
+
+      --
+
+
+      -- Create the message header by calling write_mime_header for each component
+
+
+      --
+
+
+      write_mime_header('From', audit_email_from_header);
+
+
+
+      IF debug_audit_emails THEN
+
+
+         write_mime_header('To',   debug_audit_email_rcpnt_addr);
+
+
+      ELSE
+
+
+         write_mime_header('To',   audit_email_to_header);
+
+
+      END IF;
+
+
+
+      write_mime_header('Content-Type', 'text/html');
+
+
+      IF db_object_change_count > 0 THEN
+
+
+         --
+
+
+         -- Changes were made, so set the message priority to Normal and define
+
+
+         -- an appropriate subject line.
+
+
+         --
+
+
+         write_mime_header('X-Priority', 3);
+
+
+         write_mime_header('Subject', db_link || ': ' ||
+
+
+                           to_char(db_object_change_count,'FM9,999,999,999,999') ||
+
+
+                           ' DDL statements executed.');
+
+
+         --
+
+
+         -- Create the body of the message with calls to utl_smtp.write_data
+
+
+         --
+
+
+         utl_smtp.write_data(c, '<html>' || '<body style="' ||
+
+
+                                'font-family: Arial;font-size: 10pt">');
+
+
+         utl_smtp.write_data(c, 'The following DDL statements have been ' ||
+
+
+                             'executed in ' || db_link || ' since ' ||
+
+
+                             TO_CHAR(threshold_date,'FMDay Month DD, YYYY') ||
+
+
+                             ' at ' ||
+
+
+                             TO_CHAR(threshold_date,'HH:MI:SS PM') ||
+
+
+                             ':<p>');
+
+
+         -- Format the summary audit data retrieved in an HTML table
+
+
+         utl_smtp.write_data(c, '<table border=1 style="' ||
+
+
+                                'font-family: Arial;font-size: 10pt">');
+
+
+         utl_smtp.write_data(c, '<tr bgcolor=silver align=left valign=top>' ||
+
+
+                                '<th>Schema<br>Owner</th>' ||
+
+
+                                '<th>Run By<br>O/S Userid</th>' ||
+
+
+                                '<th>Operation</th>' ||
+
+
+                                '<th>Object<br>Type</th>' ||
+
+
+                                '<th>Statements<br>Executed</th></tr>');
+
+
+         FOR i in 1..NVL(audit_summary_tab.last,0) LOOP
+
+
+            -- Do not display repeating values for object owner or os_user_id.
+
+
+            -- 2022-06-07  atericks  Changed <percent>nbsp to chr(10) below
+
+
+            IF audit_summary_tab(i).object_owner_user_id = prev_object_owner_user_id THEN
+
+
+               audit_summary_tab(i).object_owner_user_id := chr(38)||'nbsp;';
+
+
+               IF audit_summary_tab(i).login_os_user_id = prev_login_os_user_id THEN
+
+
+                  audit_summary_tab(i).login_os_user_id  := chr(38)||'nbsp;';
+
+
+               ELSE
+
+
+                  prev_login_os_user_id   := audit_summary_tab(i).login_os_user_id;
+
+
+               END IF;
+
+
+            ELSE
+
+
+               prev_object_owner_user_id := audit_summary_tab(i).object_owner_user_id;
+
+
+               prev_login_os_user_id     := audit_summary_tab(i).login_os_user_id;
+
+
+            END IF;
+
+
+            -- Put each record retrieved into a row in an HTML table.
+
+
+            utl_smtp.write_data(c, '<tr>' || '<td>' ||
+
+
+               audit_summary_tab(i).object_owner_user_id || '</td><td>' ||
+
+
+               audit_summary_tab(i).login_os_user_id     || '</td><td>' ||
+
+
+               audit_summary_tab(i).ddl_operation_nm     || '</td><td>' ||
+
+
+               audit_summary_tab(i).object_type_nm       || '</td><td>' ||
+
+
+               to_char(audit_summary_tab(i).ddl_statements_executed,
+
+
+                  '999,999,999,999') || '</td></tr>' || vLineBreak);
+
+
+            -- NOTE: The line break character chr(10) was included above to avoid
+
+
+            --       the periodic inclusion of unprintable characters in the email.
+
+
+
+            totalStatements := totalStatements + audit_summary_tab(i).ddl_statements_executed;
+
+
+
+         END LOOP;
+
+
+
+         utl_smtp.write_data(c, '<tr bgcolor=silver>' ||
+
+
+            '<td>' ||
+
+
+            ' '  || '</td><td>' ||
+
+
+            ' '  || '</td><td>' ||
+
+
+            ' '  || '</td><td>' ||
+
+
+            'Total<br>Updates'  || '</td><td>' ||
+
+
+            totalStatements || '</td></tr>' || vLineBreak);
+
+
+
+         utl_smtp.write_data(c, '</table>');
+
+
+         --
+
+
+         -- 2022-06-07  atericks  Changed <percent>nbsp to chr(10) below
+
+
+         utl_smtp.write_data(c, '<br>For full details on each DDL ' ||
+
+
+                             'statement executed, browse the DESCHECK.DDL_AUDIT' ||
+
+
+                             ' table in ' || db_link || '.<p>If you do not know ' ||
+
+
+                             'or have forgotten the DESCHECK password, simply '  ||
+
+
+                             'run the following SQL statement while logged on ' ||
+
+
+                             'to the DES_OWNER account:<br>'||chr(38)||'nbsp;'||chr(38)||'nbsp;SELECT ' ||
+
+
+                             'PASSWORD<br>'||chr(38)||'nbsp;'||chr(38)||'nbsp;FROM USER_DB_LINKS<br>' ||
+
+
+                             chr(38)||'nbsp;'||chr(38)||'nbsp;WHERE DB_LINK = ''' || db_link ||
+
+
+                             '''<br>'||chr(38)||'nbsp;'||chr(38)||'nbsp;/');
+
+
+         utl_smtp.write_data(c, '</body></html>');
+
+
+      ELSE
+
+
+         --
+
+
+         -- Changes were not made, so set the message priority to Low and
+
+
+         -- define an appropriate subject line.
+
+
+         --
+
+
+         write_mime_header('X-Priority', 5);
+
+
+         write_mime_header('Subject', db_link || ': No DDL statements executed.');
+
+
+         --
+
+
+         -- Create the body of the message with calls to utl_smtp.write_data
+
+
+         --
+
+
+         utl_smtp.write_data(c,'<html>' || '<body style="' ||
+
+
+                               'font-family: Arial;font-size: 10pt">');
+
+
+         utl_smtp.write_data(c,'No DDL statements have been executed in ' ||
+
+
+                               db_link || ' since ' ||
+
+
+                               TO_CHAR(threshold_date,'FMDay Month DD, YYYY') ||
+
+
+                               ' at ' ||
+
+
+                               TO_CHAR(threshold_date,'HH:MI:SS PM') ||
+
+
+                               '.');
+
+
+         utl_smtp.write_data(c, '</body></html>');
+
+
+      END IF;
+
+
+      -- End the email message
+
+
+      utl_smtp.close_data(c);
+
+
+   EXCEPTION
+
+
+      WHEN OTHERS THEN
+
+
+         -- An error was encountered, so send an email describing the error.
+
+
+         send_error_email(db_link,
+
+
+                          SQLERRM,
+
+
+                          'procedure send_summary_email');
+
+
+   END send_summary_email;
+
+
+
+BEGIN
+
+
+
+   -- Open a connection to an SMTP server
+
+
+   c := utl_smtp.open_connection(audit_email_server);
+
+
+
+   -- Perform initial handshake with SMTP server
+
+
+   utl_smtp.helo(c, 'gov.bc.ca');
+
+
+
+   -- Determine the most recent date/time that this procedure successfully
+
+
+   -- completed (after being initiated by DBMS_JOB).
+
+
+   get_audit_last_run_date(ddl_run_since_date,dbms_job_exists);
+
+
+   IF dbms_job_exists THEN
+
+
+      -- Subtract one hour from this date/time to ensure that any DDL
+
+
+      -- that was executed while this procedure was running is also included in
+
+
+      -- the audit email.
+
+
+--vhd_begin
+
+
+/*  ddl_run_since_date := ddl_run_since_date - (1/24);*/
+
+
+    -- Subtract one hour from this date/time to ensure that any DDL
+
+
+    -- that was executed while this procedure was running is also included in
+
+
+    -- the audit email.
+
+
+    ddl_run_since_date := ddl_run_since_date - (2/24);
+
+
+--vhd_end
+
+
+   else
+
+
+      -- Inform the DA Group that the DBMS_JOB entry could not be found.
+
+
+      send_missing_dbms_job_email;
+
+
+   END IF;
+
+
+
+   --  Loop through each database link owned by DES_OWNER.
+
+
+   FOR des_owner_db_link IN des_owner_db_links LOOP
+
+
+      -- Skip databases that do not need to be audited.
+
+
+      IF des_owner_db_link.name <> 'SAIPAN_CONB' THEN
+
+
+         -- Check for the necessary auditing objects in the database that
+
+
+         -- corresponds to the current database link.
+
+
+         check_for_audit_objects(des_owner_db_link.name,
+
+
+                                 audit_table_found,
+
+
+                                 audit_trigger_found,
+
+
+                                 error_msg);
+
+
+         IF error_msg IS NOT NULL THEN
+
+
+            -- An error was encountered attempting to locate the auditing objects
+
+
+            -- in the database, so send an email describing the error.
+
+
+            send_error_email(des_owner_db_link.name,
+
+
+                             error_msg,
+
+
+                             'procedure check_for_audit_objects');
+
+
+         ELSIF audit_table_found and audit_trigger_found THEN
+
+
+            -- The necessary auditing objects were found in the database, so send an
+
+
+            -- email that summarizes the changes to the relevant database objects.
+
+
+            send_summary_email(des_owner_db_link.name,ddl_run_since_date);
+
+
+         ELSE
+
+
+            -- The necessary auditing objects were not found, so send an email that
+
+
+            -- informs the DA Group.
+
+
+            send_missing_audit_objs_email(des_owner_db_link.name,
+
+
+                                          audit_table_found,
+
+
+                                          audit_trigger_found);
+
+
+         END IF;
+
+
+         -- Issue a COMMIT to free up the open database links.  This will avoid
+
+
+         -- an ORA-02020 error.
+
+
+         COMMIT;
+
+
+      end if;
+
+
+   END LOOP;
+
+
+
+  -- Terminate the SMTP session and disconnect from the SMTP server
+
+
+  utl_smtp.quit(c);
+
+
+
+EXCEPTION
+
+
+
+   WHEN utl_smtp.transient_error OR utl_smtp.permanent_error THEN
+
+
+      BEGIN
+
+
+         utl_smtp.quit(c);
+
+
+      EXCEPTION
+
+
+         WHEN utl_smtp.transient_error OR utl_smtp.permanent_error THEN
+
+
+            NULL; -- When the SMTP server is down or unavailable, we don't have
+
+
+                  -- a connection to the server. The quit call will raise an
+
+
+                  -- exception that we can ignore.
+
+
+      END;
+
+
+      raise_application_error(-20000,
+
+
+         'Failed to send mail due to the following error: ' || sqlerrm);
+
+
+
+END DDL_AUDIT_NOTIFICATION;

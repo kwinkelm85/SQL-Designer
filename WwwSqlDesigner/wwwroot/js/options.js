@@ -3,8 +3,8 @@
 SQL.Options = function (owner) {
     this.owner = owner;
     this.dom = {
-        container: OZ.$("opts"),
-        btn: OZ.$("options"),
+        container: $("#opts").get(0),
+        btn: $("#options").get(0),
     };
     this.dom.btn.value = _("options");
     this.save = this.save.bind(this);
@@ -12,15 +12,15 @@ SQL.Options = function (owner) {
 };
 
 SQL.Options.prototype.build = function () {
-    this.dom.optionlocale = OZ.$("optionlocale");
-    this.dom.optiondb = OZ.$("optiondb");
-    this.dom.optionsnap = OZ.$("optionsnap");
-    this.dom.optionpattern = OZ.$("optionpattern");
-    this.dom.optionstyle = OZ.$("optionstyle");
-    this.dom.optionhide = OZ.$("optionhide");
-    this.dom.optionvector = OZ.$("optionvector");
-    this.dom.optionshowsize = OZ.$("optionshowsize");
-    this.dom.optionshowtype = OZ.$("optionshowtype");
+    this.dom.optionlocale = $("#optionlocale").get(0);
+    this.dom.optiondb = $("#optiondb").get(0);
+    this.dom.optionsnap = $("#optionsnap").get(0);
+    this.dom.optionpattern = $("#optionpattern").get(0);
+    this.dom.optionstyle = $("#optionstyle").get(0);
+    this.dom.optionhide = $("#optionhide").get(0);
+    this.dom.optionvector = $("#optionvector").get(0);
+    this.dom.optionshowsize = $("#optionshowsize").get(0);
+    this.dom.optionshowtype = $("#optionshowtype").get(0);
 
     let ids = [
         "language",
@@ -37,14 +37,14 @@ SQL.Options.prototype.build = function () {
         "optionsnotice",
     ];
     for (let id of ids) {
-        const elm = OZ.$(id);
+        const elm = $("#" + id).get(0);
         elm.innerHTML = _(id);
     }
 
     const ls = CONFIG.AVAILABLE_LOCALES;
-    OZ.DOM.clear(this.dom.optionlocale);
+    $(this.dom.optionlocale).empty();
     for (let i = 0; i < ls.length; i++) {
-        const o = OZ.DOM.elm("option");
+        const o = $("<option></option>").get(0);
         o.value = ls[i];
         o.innerHTML = ls[i];
         this.dom.optionlocale.appendChild(o);
@@ -54,9 +54,9 @@ SQL.Options.prototype.build = function () {
     }
 
     const dbs = CONFIG.AVAILABLE_DBS;
-    OZ.DOM.clear(this.dom.optiondb);
+    $(this.dom.optiondb).empty();
     for (let i = 0; i < dbs.length; i++) {
-        const o = OZ.DOM.elm("option");
+        const o = $("<option></option>").get(0);
         o.value = dbs[i];
         o.innerHTML = dbs[i];
         this.dom.optiondb.appendChild(o);
@@ -66,9 +66,9 @@ SQL.Options.prototype.build = function () {
     }
 
     const styles = CONFIG.STYLES;
-    OZ.DOM.clear(this.dom.optionstyle);
+    $(this.dom.optionstyle).empty();
     for (let i = 0; i < styles.length; i++) {
-        const o = OZ.DOM.elm("option");
+        const o = $("<option></option>").get(0);
         o.value = styles[i];
         o.innerHTML = styles[i];
         this.dom.optionstyle.appendChild(o);
@@ -77,14 +77,20 @@ SQL.Options.prototype.build = function () {
         }
     }
 
-    OZ.Event.add(this.dom.btn, "click", this.click.bind(this));
+    $(this.dom.btn).on("click", this.click.bind(this));
 
-    this.dom.container.parentNode.removeChild(this.dom.container);
+    $(this.dom.container).detach();
 };
 
 SQL.Options.prototype.save = function () {
     this.owner.setOption("locale", this.dom.optionlocale.value);
-    this.owner.setOption("db", this.dom.optiondb.value);
+
+    var oldDb = this.owner.getOption("db");
+    var newDb = this.dom.optiondb.value;
+    if (oldDb != newDb) {
+        this.owner.setOption("db", newDb);
+        this.owner.updateDB(newDb);
+    }
     this.owner.setOption("snap", this.dom.optionsnap.value);
     this.owner.setOption("pattern", this.dom.optionpattern.value);
     this.owner.setOption("style", this.dom.optionstyle.value);

@@ -12,8 +12,9 @@
     <meta charset="utf-8" />
     <link rel="stylesheet" title="material-inspired" href="styles/material-inspired.css" media="all" />
     <link rel="alternate stylesheet" title="original" href="styles/original.css" media="all" />
+    <link rel="alternate stylesheet" title="logical" href="styles/logical.css" media="all" />
     <link rel="stylesheet" href="styles/print.css" type="text/css" media="print" />
-    <script src="js/oz.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="js/config.js"></script>
     <script src="js/globals.js"></script>
     <script src="js/visual.js"></script>
@@ -60,11 +61,17 @@
             <input type="button" id="foreigndisconnect" />
             <input type="button" id="removerow" />
 
+            <input type="button" id="removerow" />
+
+            <hr />
+
+            <input type="button" id="logout" value="Logout" style="display:none;" />
+
             <hr />
 
             <input type="button" id="options" />
-            <a href="https://github.com/ondras/wwwsqldesigner/wiki" target="_blank" rel="noopener"><input type="button" id="docs"
-                    value="" /></a>
+            <a href="https://github.com/ondras/wwwsqldesigner/wiki" target="_blank" rel="noopener"><input type="button"
+                    id="docs" value="" /></a>
         </div>
 
         <div id="rubberband"></div>

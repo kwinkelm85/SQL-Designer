@@ -3,9 +3,9 @@
 SQL.TableManager = function (owner) {
     this.owner = owner;
     this.dom = {
-        container: OZ.$("table"),
-        name: OZ.$("tablename"),
-        comment: OZ.$("tablecomment"),
+        container: $("#table").get(0),
+        name: $("#tablename").get(0),
+        comment: $("#tablecomment").get(0),
     };
     this.selection = [];
     this.adding = false;
@@ -20,14 +20,14 @@ SQL.TableManager = function (owner) {
         "tablekeys",
     ];
     for (let id of ids) {
-        const elm = OZ.$(id);
+        const elm = $("#" + id).get(0);
         this.dom[id] = elm;
         elm.value = _(id);
     }
 
     ids = ["tablenamelabel", "tablecommentlabel"];
     for (let id of ids) {
-        const elm = OZ.$(id);
+        const elm = $("#" + id).get(0);
         elm.innerHTML = _(id);
     }
 
@@ -35,21 +35,17 @@ SQL.TableManager = function (owner) {
 
     this.save = this.save.bind(this);
 
-    OZ.Event.add("area", "click", this.click.bind(this));
-    OZ.Event.add(this.dom.addtable, "click", this.preAdd.bind(this));
-    OZ.Event.add(this.dom.removetable, "click", this.remove.bind(this));
-    OZ.Event.add(this.dom.cleartables, "click", this.clear.bind(this));
-    OZ.Event.add(this.dom.addrow, "click", this.addRow.bind(this));
-    OZ.Event.add(
-        this.dom.aligntables,
-        "click",
-        this.owner.alignTables.bind(this.owner)
-    );
-    OZ.Event.add(this.dom.edittable, "click", this.edit.bind(this));
-    OZ.Event.add(this.dom.tablekeys, "click", this.keys.bind(this));
-    OZ.Event.add(document, "keydown", this.press.bind(this));
+    $("#area").on("click", this.click.bind(this));
+    $(this.dom.addtable).on("click", this.preAdd.bind(this));
+    $(this.dom.removetable).on("click", this.remove.bind(this));
+    $(this.dom.cleartables).on("click", this.clear.bind(this));
+    $(this.dom.addrow).on("click", this.addRow.bind(this));
+    $(this.dom.aligntables).on("click", this.owner.alignTables.bind(this.owner));
+    $(this.dom.edittable).on("click", this.edit.bind(this));
+    $(this.dom.tablekeys).on("click", this.keys.bind(this));
+    $(document).on("keydown", this.press.bind(this));
 
-    this.dom.container.parentNode.removeChild(this.dom.container);
+    $(this.dom.container).hide();
 };
 
 SQL.TableManager.prototype.addRow = function (e) {
@@ -140,9 +136,9 @@ SQL.TableManager.prototype.click = function (e) {
     let newtable = false;
     if (this.adding) {
         this.adding = false;
-        OZ.DOM.removeClass("area", "adding");
+        $("#area").removeClass("adding");
         this.dom.addtable.value = this.oldvalue;
-        const scroll = OZ.DOM.scroll();
+        const scroll = [$(window).scrollLeft(), $(window).scrollTop()];
         const x = e.clientX + scroll[0];
         const y = e.clientY + scroll[1];
         newtable = this.owner.addTable(_("newtable"), x, y);
@@ -161,11 +157,11 @@ SQL.TableManager.prototype.preAdd = function (e) {
     /* click add new table */
     if (this.adding) {
         this.adding = false;
-        OZ.DOM.removeClass("area", "adding");
+        $("#area").removeClass("adding");
         this.dom.addtable.value = this.oldvalue;
     } else {
         this.adding = true;
-        OZ.DOM.addClass("area", "adding");
+        $("#area").addClass("adding");
         this.oldvalue = this.dom.addtable.value;
         this.dom.addtable.value = "[" + _("addpending") + "]";
     }
@@ -210,14 +206,7 @@ SQL.TableManager.prototype.edit = function (e) {
 
     /* pre-select table name */
     this.dom.name.focus();
-    if (OZ.ie) {
-        try {
-            /* throws in ie6 */
-            this.dom.name.select();
-        } catch (e) { }
-    } else {
-        this.dom.name.setSelectionRange(0, title.length);
-    }
+    this.dom.name.select();
 };
 
 SQL.TableManager.prototype.keys = function (e) {
@@ -231,7 +220,7 @@ SQL.TableManager.prototype.save = function () {
 };
 
 SQL.TableManager.prototype.press = function (e) {
-    const target = OZ.Event.target(e).nodeName.toLowerCase();
+    const target = e.target.nodeName.toLowerCase();
     if (target == "textarea" || target == "input") {
         return;
     } /* not when in form field */
@@ -246,6 +235,6 @@ SQL.TableManager.prototype.press = function (e) {
 
     if (e.keyCode == 46) {
         this.remove();
-        OZ.Event.prevent(e);
+        e.preventDefault();
     }
 };

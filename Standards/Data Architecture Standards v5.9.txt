@@ -1,0 +1,1166 @@
+
+
+Ministry of
+Attorney General
+Ministry of Public Safety
+And Solicitor General
+
+
+
+
+Data Architecture Standards
+
+
+
+
+
+
+
+
+
+
+Last Updated:December 18, 2023Version:5.9
+
+
+
+Version Control
+This section of the document is used to control the various versions or releases of the document. 
+
+Current VersionDetailsDateAuthor and Organization5.9Periodic review, plus setting up for generalization of target database architecture (i.e. alternative RDBMS products to Oracle).December 18, 2023A. Erickson, 
+ISB Ministry of Attorney General5.0Periodic review.
+* reviewed and clarified wording throughout
+* added section 3.2 Conceptual, Logical and Physical Models
+* moved rest of section 3 to a separate section 4 and everything else subsequently re-numbered.
+* updated section 9 to refer to model-driven data architecture
+January 13, 2013Information Architecture Group
+Information Systems Branch
+Ministry of Justice
+4.3.1Appendix B: Standard Class Words for Attributes
+* Updated meaning for "cd" and "dsc" class words.
+Appendix C: Standard Attribute Definitions
+* Updated definition for all four audit attributes.July 27, 2012Information Architecture Group
+ITSD, Ministry of Attorney General
+
+Details for all previous versions can be obtained by contacting the Corporate Data Manager.
+
+Previous VersionsDate5.0January 20134.4.1July 20124.3Feb. 9, 20074.2Sept. 19, 20054.1Jun. 27, 20054.0Jun. 14, 20053.0Jun. 11, 20032.0Jul. 3, 20021.0Jun. 11, 2001
+Table of Contents
+Version Control	2
+Core Policy and Procedures Manual	7
+Definitions	8
+1	Introduction	9
+1.1	Audience	9
+1.2	Purpose	9
+1.3	Prerequisites	9
+1.4	Authorization	10
+1.5	References	11
+1.6	Dictionary Standard	11
+1.7	Legacy Applications and Changes in Standards	11
+1.8	Use of Non-Oracle Databases	11
+2	Data Model Quality Assurance	12
+2.1	Quality Assurance Standards	12
+2.2	Business Involvement	12
+3	Entity -Relationship Modeling	13
+3.1	Data Model Normalization	13
+3.2	Conceptual, Logical and Physical Models	14
+4	Entity-Relationship Diagram	16
+4.1	Glossary of Terms	19
+4.2	Entities	20
+4.3	Attributes	26
+4.4	Relationships	29
+4.5	Domains	30
+5	Documenting the Entity-Relationship Model in Oracle Designer	31
+5.1	Overall Guidelines	31
+5.2	Application System Properties	32
+5.3	Entity-Relationship Diagram	33
+5.4	Glossary of Terms	33
+5.5	Entities	34
+5.6	Attributes	35
+5.7	Relationships	36
+5.8	Unique Identifiers	37
+5.9	Synonyms	37
+5.10	Domains	38
+6	Database Design	39
+6.1	Database Management System	39
+6.2	Performance Considerations	39
+6.3	Implementing Entities	40
+6.4	Implementing Attributes	41
+6.5	Implementing Relationships	42
+6.6	Implementing Domains	43
+6.7	Views	43
+7	Documenting the Database Design in Oracle Designer	44
+7.1	Overall Guidelines	44
+7.2	Server Model Diagrams	45
+7.3	Keeping the Data Model Current	45
+7.4	Table Definition Properties	46
+7.5	Column Definition Properties	48
+7.6	Primary Key Constraints	50
+7.7	Foreign Key Constraints	51
+7.8	Unique Key Constraints	53
+7.9	Check Constraints	54
+7.10	Indexes	55
+7.11	Sequences	56
+7.12	Views	57
+7.13	Preparing Designer to Produce the Physical Database Design	58
+8	Generating the Physical Database	61
+8.1	DDL Statements	61
+8.2	Table Ownership	61
+8.3	Public Synonyms	61
+8.4	Tablespaces	61
+8.5	Tables	61
+9	Updating the Entity-Relationship Model and Database Design	61
+Appendix A:  Attribute Naming Conventions	62
+Appendix B:  Standard Class Words for Attributes	64
+Identifier Attributes	64
+Text Attributes	66
+Quantity Attributes	66
+Date and Time Attributes	68
+Appendix C: Standard Attribute Definitions	70
+Audit Attributes	70
+Person Name Attributes	71
+Address Attributes	71
+Province Attributes	71
+Phone Number Attributes	71
+Appendix D:  Using Acronyms and Abbreviations	72
+Acronyms/Abbreviations	72
+Use of Significant Words	72
+Use of Special Characters	73
+Ministry Approved Standard Acronyms	73
+Ministry Approved Standard Abbreviations	73
+Appendix E:  Standard Domains	74
+Appendix F:  Subject Area Diagrams	75
+Bibliography	76
+
+Core Policy and Procedures Manual
+Chapter 12, Information Management and Information Technology Management, of Core Policy and Procedures Manual defines the authorities, responsibilities and accountabilities for information and technology management.  Following the principles listed in this chapter, the Corporate Data Manager has defined this standards document and supporting processes.
+
+https://www2.gov.bc.ca/gov/content/governments/policies-for-government/core-policy/policies/im-it-management
+
+Definitions
+"Data Modeler" refers to the developer(s) on the project team whose responsibility is the analysis and documentation of required data model changes. (May also be referred to as "Project Data Modeler".)
+"Ministry" refers to any ministry or public agency of the Province that uses this standards document.
+"Lead Data Architect" refers to the individual designated by the ministry to develop and enforce ministry data architecture standards.
+"Technical Architect" refers to an individual designated by the ministry to develop and enforce ministry technical architecture standards.
+
+1 
+Introduction
+Ministry data architectures must use the entity-relationship method for creating data models.  This document provides context for data models, and specifies the standards under which the models must be developed.
+The language and diagramming conventions contained in this document reflect industry practice.
+1.1 Audience
+This document is directed at developers who are tasked with performing data modeling and those who will have any role in managing, analyzing, designing, developing and maintaining applications for the ministry.  The roles include, but are not limited to, project managers, business analysts, database administrators, technical architects and programmers. 
+Prior to commencing any data modeling efforts, the data modeler is responsible for reading this standards document and discussing any issues with the Lead Data Architect and/or a nominated member of the Data Architecture team. All other project roles are responsible for ensuring any and all deliverables adhere to and support these standards.
+1.2  Purpose
+The intent of this document is to make it clear to the audience how they are expected to ensure that readable, accurate and complete data models are produced for the ministry, using entity-relationship modeling techniques.
+A central repository is used for the storage of an application's information throughout its entire life cycle.  Using this repository ensures consistent application design and development within the ministry.  However, sound data modeling practices are independent of the tools selected to produce and store data models.
+At the ministry, Oracle Designer is the selected tool to manage the central repository.  This document identifies how Oracle Designer will be used to store data models.
+Data models destined to be implemented in non-Oracle RDBMS products may still be modeled within the Oracle Designer product; the process for moving data model updates to those environments will by necessity be somewhat different after the model has been documented within Designer.
+1.3 Prerequisites
+It is not the intent of this document to be a training guide on data modeling, so the following prerequisites must be met:
+* The data modeler must have industry level knowledge of, and working experience with, relational data modeling concepts and terminology.
+* Anyone analyzing, designing, developing or maintaining applications for the ministry must have knowledge of relational data modeling concepts, and terminology, and experience in reading data models and properly implementing the rules of the model in the application and database.
+Note that developers will not need to have Oracle Designer experience in order to participate in the design function; all updating of the Ministry Oracle Designer repository will be done by the ISB Data Architecture group. 
+The expectation is that developers will be able to create suitable documentation which will then be used to support the approval process for data model changes. The developer may choose to use a local Oracle Designer installation for this purpose, or other similar product which can produce ERD's and all associated metadata in a mutually-understood format.
+1.4 
+Authorization
+1.4.1 Amendments to the Standards
+The Corporate Data Manager is responsible for the establishment of this document.  All future additions and amendments to this document will be under the direction of the Corporate Data Manager.
+Changes to these standards will go through the following process:
+1. Requests for change must be submitted, in writing, to the Lead Data Architect.  The request for change must contain the standard to be changed, the justification for the change, and an analysis of the short-term and long-term costs/benefits of the change.
+2. The Lead Data Architect or nominated member of the Data Architecture group will review the requested change and either accept or reject the request.  If the request is rejected, the Lead Data Architect will inform the requestor and tell the reasons for rejection.
+3. If the change is accepted, the standards document will be updated, all the analysts, designers, and developers will be informed that the standards have changed, and be given a brief summary of the change.  This step can be done on a periodic basis if there are many changes in progress.
+1.4.2 Deviations from the Standards
+Deviations from the standards are considered on a case-by-case basis.  A single, approved deviation does not set a precedent for any further deviations within the same project or other projects.
+Deviations from these standards will go through the following process:
+1. Requests for deviation must be submitted, in writing, to the Lead Data Architect.  The request must contain the names of the objects that will deviate from the standards, the standard from which the objects will deviate, the justification for the deviation, and an analysis of the short-term and long-term costs/benefits of the deviation.
+2. The Lead Data Architect or a nominated member of the Data Architecture group will review the requested deviation, and either accept or reject the request.  If the request is rejected, the Lead Data Architect will inform the requestor and tell them the reasons for the rejection.
+Approved deviations will apply only to the named objects.
+1.4.3 Clarification of the Standards
+The Lead Data Architect will provide clarification on any part of these standards.  Any errors are to be reported to the Lead Data Architect.
+1.4.4 Absence of Standards
+In the absence of standards, the standard will be determined by the Lead Data Architect.  A standard may also be proposed for review by the Lead Data Architect.
+1.4.5 Issue Resolution
+The Lead Data Architect will make the final decision on all issues pertaining to the data model's information and architecture.
+1.5 
+References
+Numerous documents published by the Province of British Columbia may also be applicable, during the analysis, design, development and maintenance of applications.  
+* Quality Assurance of Data Models - Ministry of Attorney General, Information Systems Branch
+* Aboriginal Administrative Data Standard - Ministry of Aboriginal Relations and Reconciliation, Intergovernmental and Community Relations
+* Data Architecture Standards - Province of British Columbia
+* Data Management Roles and Responsibilities - Province of British Columbia
+* Core Policy and Procedures - Province of British Columbia
+Chapter 12, Information Management and Information Technology Management
+Any further standards that are also applicable will be discussed during the data model planning session (see Quality Assurance of Data Models),
+1.6 Dictionary Standard
+Spelling and grammar must conform to the English Oxford dictionary.
+1.7 Legacy Applications and Changes in Standards
+It is recognized that the data model and database design for legacy applications may not conform to these standards.
+Applying the standards to changes on legacy data models and database designs will be evaluated on a case-by-case basis by the Lead Data Architect or a nominated member of the Data Architecture group.
+1.8 Use of Non-Oracle Databases
+Applying the standards for data design to databases which will not be hosted within an Oracle RDBMS will be evaluated on a case-by-case basis by the Lead Data Architect or a nominated member of the Data Architecture group. 
+That said, it is expected that for both Oracle and non-Oracle RDBMS's, the logical and physical models will still be maintained in the metadata repository used by the Data Architecture group (currently Oracle Designer), with the main expected difference being that it may not be possible to generate the DDL scripts to be used to update the non-Oracle databases directly from the Oracle Designer product. 
+(It is worth pointing out that as of this writing, the replacement of the Oracle Designer toolset with something more current has been on the back-burner for quite some time, so in the somewhat near-ish future, it may be possible to generate the DDL scripts for both the Oracle and non-Oracle databases, bringing both processes into one pattern.)
+2 
+Data Model Quality Assurance
+2.1 Quality Assurance Standards
+It is the ministry's assertion that quality assurance is a consideration throughout every aspect of analyzing, designing and building an application.  Quality is not an afterthought; it is planned for and built into the deliverables. 
+In support of this assertion, before reading any further, the data modeler is directed to the current version of the Quality Assurance of Data Models document.  By reading this document, the data modeler is made aware of the quality measures expected before starting any modeling work.  The data modeler can then ensure that each defined object contributes to the overall quality of the model.
+The data model development and review process defined in Quality Assurance of Data Models must be followed.
+2.2 Business Involvement
+The business expert is the ultimate authority on how accurately models represent their business.  Quality assurance of models requires the direct involvement of the business to review and approve the models.
+To business experts, the models demonstrate that during the analysis phase, the data modelers have acquired an in-depth understanding of the business.  The models also demonstrate how the proposed system will fit in with the goals and objectives of the business area.
+The business expert is expected to be able to review and verify the data model, since the ministry's data modeling standards indicate that the model is to use business terminology.  With minimal technical assistance, any information contained within the model can be understood by the business expert.
+Additionally, it is expected that data modelers are experienced in presenting the results of their work to business experts who will have varying degrees of familiarity with data modeling concepts.
+Ministry business experts and the Lead Data Architect and/or nominated member of the Data Architecture group must review and approve all data model changes before the changes may be moved to the Dev, Test, or Production RDBMS environments.
+3 
+Entity-Relationship Modeling
+Data models are used in the ministry to describe the structure and meaning of information important enough to be captured and reported for a particular business area.
+Note that data models alone provide only a partial description of the business.  Process models are used in conjunction with data models to provide complete description of the business.
+The data model is a description of what business information is significant, and how business information is interrelated for a particular business area or process.  As a description of the business, the data model must be understandable by a business expert, with minimal interpretation by systems staff.  The standards contained in this document ensure that both the scope and the description of the business are clear, and common business terms are used.
+The data model is not a generic description of how the business is performed in the industry as a whole.  Rather, the data model is focused on the particular business scope under consideration.  Where the model expresses a future intent, then it shows how data will be structured within a one to two year framework. 
+Within the ministry, data modeling is based on the information modeling techniques of entity-relationship modeling.  An entity-relationship model includes one or more entity-relationship diagrams (ERD), and supporting documentation that hold together as a complete and comprehensive exposition of the business' information.
+The supporting documentation includes the following but is not limited to:
+* Entity and attribute definitions
+* Attribute formats
+* Domains
+* Entity and attribute volumetric information
+* Business assumptions and rules
+* Glossary of terms
+This supporting information must clearly explain and justify design decisions.
+
+3.1 Data Model Normalization
+Normalization is a set of techniques for ensuring that the data model results in a database design that:
+* avoids redundancy where the same piece of information is stored more than once
+* avoids insertion, update and deletion complexities caused by redundant data, which could lead to loss of data integrity 
+* supports data re-usability
+Second-normal, third-normal and Boyce-Codd normal forms deal with functional dependencies that can occur with columns that are not part of the primary key.  
+Fourth-normal and fifth-normal forms deal with multi-value dependencies and business rules.  When all the resulting columns in the table form the primary key, these entities must be carefully examined to ensure that they do not violate these two normal forms.
+The data model must be in at least fifth-normal form.  In the vast majority of cases, models in third-normal form require no further effort to attain the higher normal forms. 
+3.2 
+Conceptual, Logical and Physical Models
+Three types of data models are used in planning, developing and maintaining systems:  conceptual, logical and physical.  Each model has its own goals, objectives and content and therefore, its own set of standards requirements.
+Conceptual Data ModelLogical Data ModelPhysical Data ModelDefinitionA data model that is presents at a level of data abstraction that is appropriate for business, hiding the underlying details and making it easier for people to comprehend.  A conceptual model should reflect the phenomena in the users' world, being modeled as directly as possible to the way the users think.
+ A data model that documents the business requirements for data within a system, as well as the specific business rules or relationships that apply to that data.  
+It is created without any specific computer environment, software and hardware, in mind.  The intent is to produce a purely logical view of the data that is well understood by the business area.A data model that shows the design decisions made to optimize the representation of the logical model within the constraints of the technology and software development environment.
+It represents the implementation of the logical data model into a specific DBMS structureContentIncludes major entities and relationships.  The entities are not fully attributed and some may include only key attributes.  There may be many-to-many relationships.  Includes entities, attributes, relationships , unique identifiers, primary identifiersIncludes tables, columns, keys, data types, indices, validation rules, database triggers, stored procedures, domains, access constraints, volumetrics, and frequency of use. 
+In addition, there may be non-business tables to support processing.Naming ConventionBusiness names are used for entities and attributes. 
+Business names are used for entities and attributes. 
+Business names are used for table and column names are used, subject to limitations imposed by the database management system.  Normal FormAs attributes are not fully provided, and there are many-tomany relationships, this model is not necessarily normalized.Normalized to fifth normal formIf the nature of the database is Online Transaction Processing (OLTP) or Operational Data Store (ODS) it usually is not de-normalized.  
+
+Conceptual Data ModelLogical Data ModelPhysical Data ModelZachman FrameworkRow: 	2
+Perspective:	Business Management
+A model of the "things" of the enterprise.Row: 	3
+Perspective:	Architect
+A model of the logical representation of the "things" of the enterprise.Row: 	4
+Perspective:	Engineer
+The technology-constrained, physical implementation design of the systems of the business.Used in System Development Life Cycle PhaseSystem PlanningRequirementsRequirementsDevelopmentDevelopmentMaintenanceMaintenance
+4 
+Entity-Relationship Diagram
+General
+* Entity-relationship diagrams are to use Richard Barker's diagramming conventions.
+* ERDs must be created for every data model.
+* Each ERD must accurately reflect the business requirements of the subject area.
+* The purpose of the ERD must be explained.
+* Every entity and every relationship must appear on at least one ERD.
+* ERDs must be well organized and easy to understand since they are used to communicate with business experts.
+Label
+* Every ERD must be labeled.  Put the label in a box in the top left corner.  In the label, include the following information:
+> filename
+> diagram title
+> application name
+> date last updated
+* The diagram title must be indicative of the business area being modeled, and the name must be understood by business experts.
+Layout
+* None of the ERD elements is to overlap any other ERD elements.
+* Stretch or shrink entity boxes as needed to adhere to standards for relationship lines.
+* Use plenty of white space to avoid a congested look.
+* Ten to fifteen entities can fit comfortably onto the recommended diagram size, which allows the text to remain readable.
+Entities
+* Entities are represented by a rectangle with rounded corners.
+* Size the entity box so that the entity name is fully displayed.  To ease layout problems, more than one line may be used for the name.
+* Line entity boxes up as much as possible.
+* If there are a number of entities placed side-by-side, horizontally align the names for easier reading.
+* Center, left align or right align the name consistently across all entity boxes.
+Subtypes and Supertypes
+* Subtypes and supertypes have the same diagramming standards as entities.
+* Subtypes and supertypes are represented by a 'box in box' convention.
+Attributes
+* Where an entity's attributes are displayed, the entity box must be sized to fully display all the attributes and their names.
+Relationships
+* Place independent entities above dependent entities, such that the relationship's "crow's foot" points downward.
+* The independent entity's relationship name is horizontally positioned to the right of the line below the independent entity.
+* The dependent entity's relationship name is horizontally positioned to the left of the line above the dependent entity.
+* The relationships must display optionality, cardinality and non-transferability.
+* For relationships that are part of the primary identifier, a bar must be placed across the dependent end of the line.
+* The relationship line must be long enough so that it is clear which name belongs to which relationship end.
+* Draw relationship lines straight vertically.  Do not have bends in the line.
+* Do not cross relationship lines.  Often, changing the size or position of an entity stops lines from crossing.
+* Do not use closely placed parallel lines, which are difficult to follow.
+
+
+Exclusive Arcs
+* All entities and relationships in an exclusive arc must appear together on at least one diagram.
+*  A dependent entity may participate in two or more mutually exclusive relationships.  See Figure 1.  From this point of view, the following rules must be applied:
+> All the relationship ends in an arc must be mandatory or all the relationship ends in an arc must be optional.  An arc may not span a mixture of mandatory and optional relationship ends.
+> A relationship end can be in only one arc.
+> An arc must span at least two relationship ends.
+> Arcs are nearly always drawn across the many ends of relationships.
+> Arcs may not span relationships where one relationship is to a subtype and another is to that subtype's supertype.
+> If one relationship end that is part of the unique identifier is in an arc, then each of the other relationship ends within the arc must also be part of alternative unique identifiers for the entity.
+> Relationships participating in an arc may not form part of the primary identifier.
+	
+	Figure 1 Dependent entity participating in two mutually exclusive relationships.
+Data Model Diagrams
+* ERDs are used to communicate and so models are to be partitioned into smaller, more easily understood and maintained subject areas.
+* The approach to partitioning the data model is as follows:
+1. determine the appropriate subject areas,
+2. produce a context data diagram showing how all the subject areas fit together, and
+3. produce the diagram for each subject area.
+* See Appendix F  Subject Area Diagrams for details and standards on producing the subject area and context diagrams.
+* Additional diagrams may be created as need to communicate business concepts; however, at a minimum, a complete set of subject area and context diagrams must be created. 
+4.1 
+Glossary of Terms
+General
+* A list of business terms or vocabulary must be documented in a glossary.  The glossary is useful for understanding the business being modeled.
+* Each business term must have an associated definition that is meaningful to the business expert.  
+* The glossary may include acronyms and abbreviations.  See Appendix D:  Using Acronyms and Abbreviations,
+Examples of Terms
+SOC is an acronym commonly used by the business to refer to Style of Cause
+4.2 
+Entities
+General
+* Entities are objects of interest to the business.  Entities may be people (CUSTOMER, EMPLOYEE); tangible objects (PRODUCT, ITEM); events (ORDER, INVOICE) and concepts (EXPENDITURE, PROJECT ASSIGNMENT).
+* Entities without a relationship must justify this situation in the supporting documentation.
+* All instances of an entity must always contain the same attributes.
+Naming Entities
+* Entity names are to be singular and imply a single instance of the entity.
+* The entity name must be self-descriptive.  A typical entity name is a noun or a gerund1 (for example, FINDING and COURTROOM BOOKING).
+* Names for the entities must be meaningful to the business expert.  Use common business names so that the entity's name can be correctly recognized by business experts.  It is important that a business terminology be developed in conjunction with business experts so there is consistent understanding and usage of the entity.  
+* Names must be unique and repeatable throughout the ministry (different areas of the ministry reading the name at different times must have the same understanding of what the name means - a corporate-wide use of the name).  e.g. ACCOUNT is not specific as it could be SALES ACCOUNT or FINANCIAL ACCOUNT depending on the reader's viewpoint.
+* The entity name must imply appropriate scope, neither too wide nor too narrow.
+* When encountering space restrictions, see Appendix D:  Using Acronyms and Abbreviations.  Any acronyms or abbreviations used in the name must be fully spelled in the entity definition.
+* The entity name is spelled in uppercase letters, and can be made up of more than one word, with a space separating each word.  Numbers and special characters are not allowed.
+* If the entity name is to be used to create objects in a physical database, refer to that database's documentation for any specific naming constraints (name length, disallowed characters, etc.)
+* Do not include any words that identify a category to which an entity may belong, as this embeds additional non-business meaning in the name.  For example, for classifying entities, do not use CD or TYPE, and for associative entities, do not use SET or XREF.  These words may be used if they are part of business terminology but avoid indiscriminate use of such words for the categorization of entities.
+* Entity names may not contain the names of physical constructs such as "file" or "table" as a qualifier.
+* The ministry does not intend to provide an exhaustive list of inappropriate words for naming entities.  The suitability of a word can be determined by:
+1. following the ministry's standards for naming entities, and 
+2. applying the quality criteria specified in the current version of the Quality Assurance of Data Models document.
+
+Defining Entities
+* Define the entity; do not describe it.  The definition must answer the question what is it?, not what does it do or what does it look like?.
+* The definition is to support the entity name.
+* The definition is to be from a business perspective, not from a system perspective.
+* Each entity must have only one meaning, and no two entities can have the same meaning.
+* When referencing entities in the definitions, the referenced entity's name must be in uppercase.
+* Any terms mentioned in the definition that are not references to another entity are to be defined in a glossary.
+* Don't use the name in defining itself ("A CONTRACT is a contract between the corporation and ...")
+* In the definition, strive for generality by avoiding "current" references ("...the XYZ created by Emily down in Personnel when...)
+* Define the thing, not the process ("The Company creates a list of...") and not the usage ("The Expense Item is used...") because the process and the use will change, but the essence of the entity will not.
+* The definition must clearly identify the scope of the entity.  Provide examples of what does and does not qualify as instances.
+Supertypes
+* Since a supertype is an entity, it follows the same standards as those for entities.
+* Supertypes can participate in relationships, and must participate in at least one.
+* A supertype can be a subtype of another entity.
+* A supertype requires at least two subtypes.
+Subtypes
+* Since a subtype is an entity, it follows the same standards as those for entities.
+* A subtype inherits the entity definition, attributes, and relationships of its supertype, and thus the inherited objects must be correct for the subtype.
+* If there may be instances of an entity where some of the attributes may be null (i.e., make sense at that time or for that particular instance), optional relationships then define a subtype.
+* Subtype entities must have at least one attribute value or relationship that distinguishes them from other subtypes.
+* Subtypes can participate in relationships.
+* Subtypes can also be supertypes since they themselves can have subtypes.
+* Subtypes must be mutually exclusive and exhaustive.
+Unique Identifiers
+* An entity must have at least one unique identifier that can be composed of one or more attributes.
+* Unique identifiers composed of more than one attribute are also known as structured identifiers or composite identifiers.
+* All unique identifiers must be documented.
+
+Primary Identifiers
+* One of the entity's unique identifiers must be selected to be the primary identifier.  The primary identifier establishes relationships in the database, and is used to navigate the relational database.
+* The selected primary identifier must have the following characteristics:
+> it is applicable to all instances of an entity,
+> it is minimal, that is, it is composed of only those attributes necessary to uniquely identify each instance of the entity, and
+> it is stable; that is, it must not change value over time.
+* The primary identifier of a dependent entity must inherit the primary identifier of its parent. 
+Candidates for the Primary Identifiers
+* A natural identifier is composed of one or more attributes that have business meaning.  Natural identifiers have business meaning, which helps to clarify the meaning of each entity.
+* A surrogate identifier is one where the system is used to generate a unique value for the primary identifier.  It has no inherent business meaning and is used only to distinguish one entity instance from another.
+* Usage of surrogate identifiers is evaluated by the Lead Data Architect or a nominated member of the Data Architecture group on a case-by-case basis to avoid indiscriminate use of surrogate keys.  An example of indiscriminate use would be adding a surrogate key to an associative entity or code tables purely for the sake of consistency.  
+* Surrogate identifiers are to be used only in the following situations described below.  Information in the model must justify the use of a surrogate identifier.
+> no other natural unique identifiers are available. 
+> the natural unique identifier is manually created and data entry errors may occur when it is then entered into the application.
+> the natural identifier is unstable, that is, it could change over time.  An example of this would be the name of a country.
+> Some entities may be uniquely identified by a combination of relationships and attributes.  If this situation carries down to several levels of dependent entities, at the bottom level, the resulting composite key can contain numerous columns and thus become unwieldy. 
+
+Examples of Entity Names
+Submitted Entity NamePreferred Entity NameQuality Assurance Comment on Submitted Entity NameACCOUNTSACCOUNT
+SALES ACCOUNT
+FINANCIAL ACCOUNTEntity name is to be singular.
+ACCOUNTS may be too wide in scope.  SALES or FINANCIAL may be needed to quality ACCOUNT since ACCOUNT may have different meanings across the enterprise.CUSTOMER TABLE
+EMPLOYEE FILE
+CD HAIR COLOURCUSTOMER
+EMPLOYEE
+HAIR COLOURBy containing the name of a physical construct, such as 'TABLE' or 'FILE', the entity name reflects a system perspective rather than a business one.
+CD' is not part of the business terminology.PRODUCT CATALOGUE
+TRANSACTION HISTORY
+VISITING SCHEDULE
+PRODUCT
+
+TRANSACTION
+
+VISIT
+
+Entity name must reflect a single instance, not a number or set of instances.SUBJECT GANG SETGANG MEMBERSUBJECT GANG SET is too wide in scope; it implies that each and every combination of SUBJECT and GANG can be an instance in the many-to-many resolution entity.  GANG MEMBER more precisely states that only a subset of the combinations will be instances, and it indicates the business rule for determining which combinations can be instances. CARVEHICLEName suggests too narrow a scope for the entity.PRODUCT PRICEPRODUCTEntity is named after its perceived most important attributeDRIVERPARTY ROLEThe name is too narrow in scope as it reflects only a subset of the roles an entity plays in the business.AC BAL MVTAIRCRAFT BALANCING MOVEMENTName is abbreviated unnecessarily, reducing its communication effectiveness.VALID EVENT TYPEEVENT TYPEValidity is a detail about the state of an entity instance and thus should be an attribute.HAIR COLOUR TYPEHAIR COLOURThe addition of 'TYPE' to this entity's name implies a further classification of colours into categories such as 'light' or 'dark'. HAIR COLOUR is sufficient.
+Examples of Entity Definitions
+Submitted Entity DefinitionPreferred Entity DefinitionQuality Assurance Comment on Submitted Entity DefinitionCUSTOMER
+A member of a loyalty program.CUSTOMER
+A person or organization entitled to receive special goods and services.The scope is not qualified.  The term 'member' is too general.  Who or what may be a member?PRODUCTION PROMOTION
+The intersection entity resolving the many-to-many relationship between product and promotionPRODUCTION PROMOTION
+The inclusion of a particular product in a promotion.The definition reflects a systems perspective rather than a business one.SUBJECT ADDRESS TYPE
+Resolution entity, addresses may be related to many subjectsSUBJECT ADDRESS TYPE
+The Accounting department's categorization of the association between a SUBJECT and an ADDRESS, such as 'billing' and 'mailing'.  The definition reflects a systems perspective rather than a business one.VEHICLE COLOUR TONE TYPES
+classifies the color tone of a vehicleVEHICLE COLOUR TONE TYPES
+The categorization of a VEHICLE'S exterior colour into the degree to which the colour is mixed with black, e.g. light, dark.Provides some examples of colour tones, since the name and definition are similar to those of the following entity.VEHICLE COLOUR 
+Defines the colour of a vehicleVEHICLE COLOUR
+The categorization of a VEHICLE's exterior appearance in terms of colour, such as blue, red, orange.Provides some examples of colours, since the name and definition are similar to those of the previous entity.AREA
+For reporting purposes, a way to group areasAREA
+A geographical division of the BC Province for administrative purposes.The submitted definition tells how an AREA is used but it does not define what is an AREA.COA PAYEE TYPE
+Not used at present.Although COA PAYEE TYPE is not currently in use by the application, if it is part of the business, provide an appropriate definition.
+The non-use of the entity must be recorded in the entity's notes.COUNTRY
+List of allowable countriesCOUNTRY
+A political state or nation with a historical and cultural land boundary.  Some examples are Canada, Sweden, and North Korea.  These boundaries may not be accepted by the United Nations or other COUNTRIES.
+
+EVENT
+An occurrence of an incident within or around a prison.EVENT
+A noteworthy incident that occurs in or around a LOCATION.  These EVENTS are noteworthy because they may be part of a pattern of illegal activity that the LOCATION is trying to control.
+Examples of EVENTS include fights indicating gang activity or drugs thrown over a fence for narcotics transactions.The definition's scope is too broad.  There are many occurrences of many kinds of incidents within or around a prison.  Will all incidents be recorded?  If not, what particular kinds are of interestVEHICLE
+A vehicle has wheels.  It is made of metal and plastic.VEHICLE
+Any conveyance for carrying passengers, goods or equipment on the ground from one location to another location.  Some examples include cars, trucks, bicycles, and skateboards.
+There are no restrictions on the kinds of VEHICLES.  Only VEHICLES that are suspected of being involved in illegal activity are recorded.
+Information about the appearance of the VEHICLE is often based on observation and is therefore, subjective.The definition must define the entity, not describe it.
+Other Examples of Entity Definitions
+
+BUILDING
+A ground-based structure that supports company business operations by housing employees, equipment, or supplies.
+Examples of a BUILDING are office building, retail store, and warehouse
+It does not include home residences, even if the employee may sometimes work at home.
+
+ACT
+An ACT is the legal device that defines the boundaries of behaviour that is accepted by society, and the punishment for overstepping these boundaries.
+
+ELSA STUDENT
+An adult person, who is applying for, is being assessed for or is undergoing English language training under the ELSA program.
+
+Identified synonyms are Learner, Candidate, and Client.
+
+STAY
+A STAY is an order issued by the Environmental Appeal Board that temporarily suspends the APPROVAL, pending a decision on an appeal.  This STAY can affect only a certain portion on the APPROVAL.
+
+4.3 
+Attributes
+General
+* An attribute is any detail that serves to classify, quantify, qualify, identify, or express the state of an entity.
+* Do not include foreign key attributes in an entity to represent relationships.
+* Each attribute must be atomic, that is, represent one and only one business fact.  The attribute cannot be further de-composed into meaningful business facts.  Consider the following example:
+attribute:	FULL NAME
+This attribute is not at the atomic level as it may be de-composed further into meaningful business facts such as surname, middle name and given name.
+
+* An attribute will have only one value at a time.  Consider the following example for a PERSON entity:
+attribute:	SPOKEN LANGUAGE
+value:	English; French; Spanish
+In this example, the attribute contains three values and thus, is de-normalized.  Following the rules of normalization, the attribute SPOKEN LANGUAGE would be modeled as a dependent entity of PERSON.
+* See Appendix C: Standard Attribute Definitions.
+Naming Attributes
+* See Appendix A:  Attribute Naming Conventions.
+* Attribute names are singular.  Separate each word with a space.  Numbers and special characters are not allowed.
+* Where there are space limitations, see Appendix D:  Using Acronyms and Abbreviations.  This appendix also lists ministry-approved abbreviations.  .  Any acronyms or abbreviations used in the name must be fully spelled in the attribute definition.
+* If the attribute name is to be used to create objects in a physical database, refer to that database's documentation for any specific naming constraints.
+Defining Attributes
+* Define the attribute; do not describe it.
+* Every attribute must have a clear and precise definition.  Definitions need not be long.  A single line is often enough if the entity is well defined.
+* Attribute definitions are to be understandable to a person unfamiliar with the application or the business.  The definition is to be from a business perspective, not from a system perspective.
+* When referencing entities in the definition, the referenced entity's name must be in uppercase.  Any terms mentioned in the definition that are not references to another entity are to be defined in a glossary.
+* When referencing attributes in the definition, the referenced attribute's name must be in uppercase. 
+* Where further clarity would be achieved, provide examples of attribute values.
+Datatype, Size and Optionality
+* For each attribute, specify the datatype, size and optionality   See Appendixes B, C and E.
+* The logical formats and datatypes specified in the appendixes assume that the data model repository is Oracle Designer, and that the physical database is Oracle RDBMS.  When using a different repository and/or database, use equivalent logical formats and datatypes.
+Attributes and Domains
+* Refer to the section 4.5 Domains for details on defining domains for attributes.
+
+Examples of Attribute Names
+Submitted Attribute NamePreferred Attribute NameQuality Assurance Comment on Submitted Attribute NameCORNET_DTTRANSFER FROM CORNET DTThe name implies a broad scope but the only date value of interest is the one on which information was transferred from CORNET.ADMISSION_DTLAST ADMISSION DTThe entity can have more than one admission date.  Since it is the last admission date stored in this attribute, the modifier is required.PHYS_DSCPHYSICAL DESCRIPTION TXTUnnecessary abbreviation of the attribute name.See Appendix B:  Standard Class Words for Attributes for other examples of attribute names.
+Examples of Attribute Definitions
+Submitted Attribute DefinitionPreferred Attribute DefinitionQuality Assurance Comment on Submitted Attribute DefinitionLONG DSC
+Date the record was originally entered
+DETAIL TXT
+A description of the EVENT, providing further information.There is inconsistency between the attribute name and definition.LOCK YN
+Yes/No IndicatorVIEW LOCK YN
+A 'Y' value means that all application users have permission to retrieve and view an EVENT.
+A 'N' value means that retrieving and viewing is restricted to the application user who originally entered the EVENTThe definition must define what is being locked, and the scope CHARACTERISTIC DSC
+Descriptions of codesCHARACTERISTIC DSC
+Description text for the codeThe definition must refer to a single entity instance.PRODUCT EFFECTIVE DT
+The date a new product was conceivedPRODUCT EFFECTIVE DT
+The date a PRODUCT is first available for CUSTOMERS to purchase.ITEM REORDER POINT QTY
+An indicator of when to reorder an itemITEM REORDER POINT QTY
+The quantity value for an INVENTORY ITEM that automatically triggers a reorder of an ITEM from the SUPPLIER when the ITEM INVENTORY ON HAND QUANTITY falls below this value.
+Other Examples of Attribute Definitions
+Entity . AttributeAttribute DefinitionSESSION . MIXED LEVEL YNIndicates whether the session involved more than one court level.DIVERSION . RECOMMENDED REASONS TXTExplanations of or reasons why the accused was recommended for participation in an alternative measures program.ADDRESS . CIVIC NOThe official number assigned to an ADDRESS by the municipality.LOCK BOX ADDRESS . LOCK BOX BAG FROM NOThe lowest value in a range of numbers assigned to lock boxes or lock bags.ADDRESS . STREET NMThe official civic name of a roadway or artery.
+
+4.4 
+Relationships
+General
+* Each relationship must involve only two entities.
+* Each business rule describing the relationship between any pair of entities must always be completely true.  If the relationship only applies to an entity during a specific phase of an entity instance's life span, then a subtype is required.
+* All many-to-many relationships must be resolved. 
+* Each relationship end must indicate appropriate cardinality and optionality.
+Naming Relationships
+* Normal and meaningful English sentences must be constructed using the relationship names.  In each direction, validate the relationship by reading it as a grammatically correct sentence according to the following syntax:
+Each (and every)  entity1  {must be OR may be}  relationship name  {one or more OR one and only one}  entity2.
+* Relationship names are to be reviewed and approved by the business experts.
+* Relationships must be named in both directions.  Often, the independent end of a relationship is named with a verb and the dependent end is named with a preposition or verb.
+* Relationship names must be in lower case.
+* Do not use weak names such as 'related to' or 'associated with', as the presence of the relationship indicates an association.  Relationships document business rules, so choose a name that is meaningful in business terms.
+Examples of Relationship Names
+Submitted Relationship NamePreferred Relationship NameQuality Assurance Comment on Submitted Relationship NameEach (and every) PERSON may be associated with one or more ADDRESSES.Each (and every) PERSON may be located at one or more ADDRESSES.Use business rather than system terminology.  Relationships document business rules.Each (and every) APPLICATION USER must be Belongs to one and only one LOCATIONEach (and every) APPLICATION USER must be placed at one and only one LOCATIONThe entity and relationship names must form a grammatically correct sentence.Each (and every) SUBJECT COMMENT must be Is About one and only one SUBJECTEach (and every) SUBJECT COMMENT must be about one and only one SUBJECTThe entity and relationship names must form a grammatically correct sentence.Each (and every) ADDRESS must be Classifying one and only one STREET TYPEEach (and every) ADDRESS must be classified by one and only one STREET TYPEThe relationship name is placed on the wrong end of the relationship.Each (and every) STREET TYPE may be Classified by one or more ADDRESSESEach (and every) STREET TYPE may be classifying one or more ADDRESSESThe relationship name is placed on the wrong end of the relationship.Other Examples of Relationship Names
+Each (and every) DEPARTMENT may be assigned one or more EMPLOYEES.
+Each (and every) EMPLOYEE must be assigned to one and only one DEPARTMENT.
+Each (and every) APPEARANCE may be attended by one or more COURT PARTICIPANTS.
+Each (and every) COURT PARTICIPANT may be attending one and only one APPEARANCE.
+4.5 
+Domains
+General
+* The word "domain" is used in information technology with at least two distinct meanings:
+1. An attribute type at some generally high level of generality, such as a date, where there are common properties.  A domain categorizes the nature of the data represented by a group of attributes, and indicates the general purpose of those attributes.  The use of domains can save time and apply a desirably high degree of standardization across attribute definitions, and subsequently, column names.
+2. A set of values that an attribute is constrained to have.  Domains are also used to implement lists and ranges of valid values.  The use of domains to implement lists of values must only be considered when the list of allowable values is static (e.g. days of week, months of the year, yes/no indicators)
+See Appendix E:  Standard Domains for the list of ministry standard domains.  Further domains can be defined as needed by contacting the Lead Data Architect for review and approval. 
+* Assign domains to attributes only when the values that the attributes represent all have the same business meaning, e.g. month.  Where applicable the attributes must also represent the same units of measure.  The best test for this is if it makes sense to perform arithmetic or comparative operations on the attributes belonging to the same domain.
+* Domains are generally applicable to more than just a single attribute.
+* At a minimum, domains must have the following properties specified.
+> name
+> definition
+> format/datatype
+> size
+Naming Domains
+* Domain names are to be meaningful to business experts.
+* Domain names are to be singular except when a domain is used to specify a list of values.  For such a domain, known as a reference domain, the domain name will be the plural of the attribute referenced.  Consider the following example:
+PROVINCES will be the reference domain for the attribute PROVINCE.
+* Domain names must contain only letters and spaces.
+* Domain names can be made up of more than one word, with each word separated by a space.
+* Where there are space limitations, see Appendix D:  Using Acronyms and Abbreviations.  This appendix also lists ministry-approved abbreviations.
+* If the domain name is to be used to create objects in a physical database, refer to that database's documentation for a list of reserved words.
+Defining Domains
+* The definition must be from a business perspective, not a systems perspective.
+* The definition must include the purpose of the domain and suggested uses for the domain.
+Defining Domain Values
+* A complete list of values must be provided when the domain is used to constrain a set of values for an attribute.
+5 
+Documenting the Entity-Relationship Model in Oracle Designer
+5.1 Overall Guidelines
+As stated in Section 1.3 Prerequisites, there are prerequisites about a person's knowledge and experience with Oracle's Designer tool.  These prerequisites have been used to determine the level of detail provided in this document on the use of Designer for entity-relationship modeling.
+5.1.1 Object Properties
+For the various data model objects, Oracle Designer provides a Properties window where details can be entered for the object.  Within this standards document, these properties fall into the following categories:
+* they are mandatory on the Properties window and there are standards on the information to be entered, or
+* they are optional on the Properties window but the standard is that they are mandatory, and there are standards for the information to be entered, or
+* they are optional on the Properties window and there are no standards on the information to be entered.  However, if the details are available, good modeling practices support entering these details into the repository.
+5.1.2 Structured Notes
+Issues, decisions, and notes must be recorded in the Notes property of the relevant object (e.g. entity, attribute, function, table, column, and module).  The format is to prefix the text with indicators as follows:
+<Phase> <Note Type> <Date> <Initials> <Note Text>
+* <Phase> is one of A, D, B, indicating the phase of development (Analysis, Design, or Build)
+* <Note Type> is one of ?, !, A, D indicating the type of note (Question, Point, Answer, or Decision)
+* <Date> is in the format YYYY-MM-DD indicating the date on which the issue was raised, or resolved
+* <Initials> is the initials of the analyst who raised this issue
+An example is
+A? 1998-01-18 GW There may be an opportunity to share this functionality with 'Record contact information about a new permittee/PMP'er/Certificate holder.
+The notes must be organized as follows:
+OUTSTANDING ISSUES
+A! 1998-01-21 GW	GENERAL LOCATION, and all information specifically related to time/place details have been deleted (R. Adams,1998-01-19) from EXAMINATION entity and the entire entity has been deleted.
+IMPLEMENTATION NOTES
+
+MISCELLANEOUS
+
+CHANGE HISTORY
+5.2 
+Application System Properties
+PropertyValueMandatory(M)/ Optional(O)Name
+* specifies the application short name or acronym defined at application creation
+* this name becomes the userid of the Oracle account that owns all the application's database objects
+* see Database Environment Standards for application naming standardsMTitle* full application name that is used as the application title on screens and reportsMAuthority* describes the person, business, or organization responsible for this application
+* must be the name of the Application Custodian.  See Data Management Roles and Responsibilities GuidelinesODocumentation Constraints* describes any business area constraints on this application.  It does not describe interfaces to other corporate systemsOComment* describes any general comments about the application as a wholeOSummary* contains a summary of the purpose of the application systemOObjectives* describes the objectives of the application system within the context of the business area: e.g., CRISP is intended to replace two legacy VAX-based systems, PLC, and PUP.  In addition, enhancements will be needed in response to new legislation and business requirements.ODescription* contains a brief overall description of the application systemMNotes* contains a change history of the application; optionally, may contain extraneous structured notes on the application systemO5.3 
+Entity-Relationship Diagram
+If colour is used to enhance the readability of the ERD, a legend indicating the meaning of the various colours must be included on the diagram.  It is recommended that the legend be created using Microsoft Excel and then inserted as an object in the ERD.
+PropertyValueMandatory(M)/ Optional(O)Owning Container* this property must be displayed on the ERDMName* this property must be displayed on the ERD
+* the name must begin with 'ERD'
+* it should be a summary of the diagram titleMTitle* this property must be displayed on the ERD
+* contains the diagram title as described in 4 
+Entity-Relationship DiagramMLast Modified* this property must be displayed on the ERD.MAuthor* there are no standards for data entered in this field since over time, the information becomes meaninglessO
+5.4 Glossary of Terms
+A glossary of terms would be recorded as Business Terminology objects in Designer. 
+
+PropertyValueMandatory(M)/ Optional(O)Name* Terms entered must not duplicate entity names
+* Terminology names can be up to 40 characters in lengthMDocumentation Description* the definition of the business term is stored hereMNotes* analysis or design comments must be placed here as structured notesO5.5 
+Entities
+PropertyValueMandatory(M)/ Optional(O)Name* the length of the entity name must take into consideration the length of the entity's plural name and the length of the application short name, given the standard for naming eventual tables.  The eventual table name must not exceed 30 characters.MShort Name* an entity identifier, 2 to 4 characters in length
+* only uppercase letters are allowed in the short name
+* must be a sequential combination of the initial letter(s) from the word or words in the entity name.
+* the short name is used primarily in the physical database for naming constraints, foreign keys, and sequences.  The short name is also used for naming journal tables.
+* cannot be an Oracle reserved word
+Some examples are:
+APRO for APPLICATION PARTY ROLE
+ALER for ALERT
+CRPT for CHARITABLE REPORT TYPEMPlural* this must be the plural form of the entity name.
+* review the one created by Designer to ensure that it is appropriate
+* The length of the plural name must take into consideration the length of the application short name, given the standard for naming eventual tables.  The table name must not exceed 30 characters.
+* As the Entity Plural becomes the default Table Name, verify the Entity Plural against any naming constraints in the physical database.MVolumes It is important that some thought, effort, and calculation be put into these estimates, by actively soliciting this information from the business experts.  These estimates will eventually be used in the sizing estimate algorithm.Initial* expected number of instances (records) in the entity (table) when the system first goes into productionOMaximum* expected number of instances (records) in the entity (table) at the end of the third yearOAverage* average number of expected instances (records) in the entity (table) at the end of the third yearOAnnual Growth Rate* expected % growth rate for the entity (table) per yearODocumentation Description* the entity definition is stored hereMNotes* optional
+* analysis or design comments must be placed here as structured notesO5.6 
+Attributes
+PropertyValueMandatory(M)/ Optional(O)Name* the maximum attribute name length is 30 charactersMSequence in Entity* will become the sequence of the columns in the table (see Database Design Transformer)
+* attributes are to be ordered as follows:
+> primary identifying attributes
+> Other attributes grouped by logical semantics
+> large binary attributes (e.g. video, sound)
+> ENT and UPD audit attributesMDomain* select the appropriate domain and allow the format, length and decimal places to be populated from the domainOFormat* if a domain is used, the format much match the domain's formatMMaximum Length* mandatory if the format is INTEGER, NUMBER or VARCHAR2
+* if a domain is used for the attribute, the Maximum Length must be the same value as the Max Att Length property of the domainODecimal Places* mandatory for attributes with a format of NUMBER
+* if a domain is used, the number of decimal places must match the number of decimal places in the domainOOptional* Yes or No
+* set to No if default values are specifiedMDefault* the entered value must be appropriate for the attribute's format
+Note:	Use of defaults must be examined carefully, as default values may lead the inexperienced user to enter erroneous data.ODerivation* algorithm or expression on how the attribute's value is derived
+* further explanation of this derivation must be qualified in the Attribute Notes property 
+O
+
+PropertyValueMandatory(M)/ Optional(O)Volumes* enter appropriate values for these fields, as these estimates will be used in the sizing estimate algorithmPercent Used - Initial* specifies the initial percentage of entities where the attribute will have a value
+* if an attribute is mandatory, then the value will automatically be set at 100%OPercent Used - Average* specifies the average percentage of the entities where the attribute will contain a value
+* if an attribute is mandatory, then the value will automatically be set at 100%ODocumentationComment* do not place any documentation in this field.Description* the attribute definition is placed hereMNotes* analysis or design comments in the form of structured notes must be placed hereOAllowable Values Node* allowable values are not to be created since domains will be used to define allowable values
+* for discriminator columns in supertype implementations, domains must be manually created.  Each value in the domain must correspond to a subtype short name.
+5.7 Relationships
+The ministry does not have any particular standards for the Relationship Properties window.  It is strongly recommended that relationships be created within the Entity-relationship Diagrammer as opposed to the RON.  This ensures that all properties of the relationship are entered correctly.
+5.8 
+Unique Identifiers
+PropertyValueMandatory(M)/ Optional(O)Name* for the unique identifier where the Primary UID? property is set to 'Y', the name has the following format:
+<entity short name>
+* for all other unique identifiers, the name will have the following format:
+<entity short name> UKn
+The n is used at the end of the unique identifier name if there is more than one unique identifier.  The n represents a sequential number.
+Some examples are:
+PROF UK
+AGFN UK
+AGFN UK1MPrimary UID?* one, and only one, unique identifier must have this property set to 'Y'MDocumentation Description* a brief description of the unique identifierONotes* any structured notes specific to the unique identifierO
+5.9 Synonyms
+Note that these synonyms will not be created as database objects.
+PropertyValueMandatory(M)/ Optional(O)Name* these synonyms should have the same name as the object it referencesMEntity* a value must be entered in either Entity or TermOTerm* a value must be entered in either Entity or TermODocumentation Description* a brief description of the synonymONotes* any structured notes specific to the unique identifierO
+5.10 
+Domains
+PropertyValueMandatory(M)/ Optional(O)Name* MAttributes in Domain * these fields define the datatypes to be used for attributesFormat* MAverage Att Length* must be the same value as Average Col LengthOMaximum Att Length* mandatory where the format is NUMBER, INTEGER or VARCHAR2
+* must be the same value as Max Col LengthMAtt Decimal Places* mandatory for numeric datatypes
+* must be the same value as Col Decimal PlacesOUnit of Measure* only applicable to numeric datatypesODerivation* OColumns in Domain * these fields define the datatypes to be used for columnsDatatypeMAverage Col Length* must be the same value as Average Att LengthOMax Col Length* mandatory where the format is NUMBER, INTEGER or VARCHAR2
+* must be the same value as Max Att LengthOCol Decimal Places* mandatory for numeric datatypes
+* must be the same value as Att Decimal Places.ODocumentation Description* describes the domainMNotes* any additional information about the domain, recorded as structured notesO6 
+Database Design
+The database design process involves the conversion of entities, attributes, relationships, and other entity-relationship data model constructs to their physical database counterparts.
+The database design process is separate and distinct from the data modeling process.  Ideally, the database design would be a direct implementation of the data model, but this is often not the case, due to:
+* database management system capabilities
+Depending on the vendor, some data model constructs cannot be directly supported by the selected relational database management system (RDBMS).  There are a number of database designs that, along with programming constructs, can be used to implement these kinds of constructs.
+* performance requirements
+Consideration of these two factors can result in different database designs for a single data model.  Measures are available to evaluate each design option, as documented in Quality Assurance of Data Models.
+6.1 Database Management System
+The data model, developed using entity-relationship modeling techniques, can be implemented using network, hierarchical, relational or object-oriented database management systems.
+The ministry standard is to use relational database management systems for the physical implementation of the entity-relationship data model.
+6.2 Performance Considerations
+The first time a data model is translated to a database design, the database designer might try to anticipate performance problems, and thus make changes to the data model.  However, the ministry standard is to implement the data model as is. 
+After the data model has been implemented into the database, the following rules are observed:
+* Make changes to the data model only if a performance problem occurs.
+* Any changes to the data model must be based on quantitative analysis.
+* De-normalization is used as a last resort.  Indexing, clustering, and buffer management must be considered before changes to the data model.
+Suggested changes to the data model are to be reviewed and approved by the Ministry's Data Administration and Database Administration groups.  Once approved, full documentation is placed in the description for the tables and columns.
+6.3 
+Implementing Entities
+General
+* Each simple entity is translated to a table.  A simple entity is one that is not a subtype or supertype.
+* The transition from the data model entities to database tables must be fully documented.
+* Any special tables (e.g. tables with no relationships, tables implemented for physical reasons only, etc.) must be well documented and approved by the Lead Data Architect and/or a nominated member of the Data Architecture group.  These tables are to follow the same naming and definition standards as those that have a corresponding entity.
+* The table definition must be the same as the corresponding entity's definition when the table implements one and only one entity.
+Naming Tables
+* Table names must be plural since tables represent a collection of data about multiple instances of an object.
+* If the table is a direct implementation of an entity, the table name is the plural form of the entity name.
+* Table names must be prefixed with the account name that will own the schema.
+* If length restrictions require the table name to be shortened, this must be documented.  See Appendix D:  Using Acronyms and Abbreviations.  The corresponding entity's name is also shortened to match the table name.
+* Any acronyms or abbreviations used in the name must be fully spelled in the entity definition.
+* Do not add suffixes or other conventions to the table name in order to identify 'types' of tables such as categorization or code tables.
+Supertype and Subtype Entities
+* This data modeling construct cannot be directly implemented into a physical database.  There are a number of design options that can used for implementation.  The preferred implementation is a single physical table with a subtype discriminator column and check constraints to enforce the population of columns that are appropriate to each subtype.  Other options will be evaluated and approved on a case-by-case basis.  Rationale must be provided for the chosen implementation design.
+Classification Entities
+* The ministry standard is to have separate classification tables for each domain of values, rather than a single generic table encompassing all the domains.
+* Classification entities are also referred to as code entities.
+
+6.4 
+Implementing Attributes
+General
+* Each attribute becomes a column.
+* The transition from attributes to columns must be fully documented.
+* Columns that are not the direct implementation of attributes values must be fully documented, reviewed, and approved by the Lead Data Architect and/or a nominated member of the Data Architecture group. They have the same naming and definition standards as other columns.
+* Date columns must allow for a four-digit year.
+* Columns must be ordered to maximize space efficiency.
+Naming Columns
+* Column names must be singular.
+* All columns must be understandable, either by its name or by the definition, to a business person.
+* If the column is the direct implementation of an attribute, and is not a foreign key column, the column name must be the same as the attribute name, unless length restrictions are encountered or the column is a foreign key with a prefix added (See section 5.5 Dependent Foreign Key Columns).  Do not add any prefixes or suffixes to the column name.
+* If the column is not based on an attribute, then it must be named using the standards set for attributes, with the exception that an underscore is used instead of a space between segments.
+* If length restrictions require the column name to be shortened, this must be documented.  See Appendix D:  Using Acronyms and Abbreviations.  Any acronyms or abbreviations used in the name must be fully spelled in the column definition.
+* If the column is a foreign key column, see Dependent Foreign Key Columns under section 5.5 Implementing Relationships.
+Defining Columns
+* A column's definition must be the same as the corresponding attribute's definition.
+Derived Columns
+* Columns containing derived values must be fully documented, reviewed, and approved by the Corporate Data Architect.  
+* These columns have the same naming and definition standards as other columns.
+6.5 
+Implementing Relationships
+General
+* Every relationship is implemented by one or more foreign key columns in the table that represents the dependent entity in the relationship.
+Dependent Foreign Key Columns
+* For each column in the primary key of the parent table, there must be a corresponding column in the dependent table.
+* Each foreign key column in the dependent table must have the same name as the primary key column in the parent table.  In cases where there is more than one foreign key to the parent table, the columns may be prefixed by suitable descriptive words that portray the relationship between the two entities.
+* In the dependent table, the columns participating in the foreign key must be placed in the same relative order as the primary key columns in the parent table.
+Indexes
+* Indexes are used for two purposes within an RDBMS:
+> to provide quick access to rows in a table.  Applications must be 'tuned' for performance by creating indexes on columns or groups of columns that are frequently queried.
+> to enforce uniqueness of one or more columns within a table.
+* A unique index must be created for each primary key and unique key.
+* Do not automatically create indexes on all foreign keys.  Consider the queries that will take place against the table and create indexes on only those columns that form part of the selection criteria.  The objective is to create indexes to avoid full table scans.
+* Foreign keys to classification tables may not require an index.  For example, a PERSON table may contain foreign keys to a number of classification tables, such as HAIR COLOUR and BIRTH COUNTRY.  If it is anticipated that there will be numerous queries on the HAIR COLOUR column in the PERSON table, then an index is required to avoid full table scans on PERSON.  In contrast, there may be little or no queries on the BIRTH COUNTRY column in the PERSON table, so an index is unnecessary on BIRTH COUNTRY.
+* In many cases, the foreign key will form the first component of the primary key in the dependent table.  Since the foreign key columns will be included in the primary key index, a separate index is not required on the foreign key.
+* In general, when creating secondary indexes for access purposes, consider the following guidelines:
+> do not index a table if a table is small, typically less than 2 * block size.  This is because if there is an index, it will take at least one read (of one block) to get the index, and then a second read to get the data.  If the whole table can be read into memory in two reads, then there is no performance gain with an index.
+> do not create redundant indexes.  Indexes usually result in faster select operations; however, an increase in the number of table indexes degrades performance on insert and update operations.
+> if there is already a composite index defined for columns (col_a, col_b, col_c) in this order, then queries on (col_a) and (col_a, col_b) will use this index, so there is no need to define additional, redundant indexes.  However, this index will not be used with queries on (col_a, col_c) or (col_b); in such situations, additional indexes may be required if these are common queries.
+Exclusive Relationships
+* Of the foreign keys participating in the exclusive arc, only one of the foreign keys may contain a value.  This restriction requires programmatic enforcement unless the database is capable of enforcing this rule.  The standard is that where the database is capable, enforcement takes place in the database through features such as a check constraint or an API.
+6.6 
+Implementing Domains
+* When the domain values are displayed to the user so that they can choose a value, the domain is implemented in an individual code table.
+* Check constraints may be used for 'behind the scene' codes that are solely for programming purposes where values are not displayed to the user.
+* The yes/no flag must be enforced at the database level.  This will typically be validated by a check constraint that specifies 'Y' or 'N' as the valid values.
+
+6.7 Views
+Naming Views
+* View names must be plural.
+* View names must be meaningful, particularly if they are used by the business.  
+* View names must be prefixed with the account name that will own the schema. 
+* View names must be suffixed with '_VW'
+* If length restrictions require the table name to be shortened, this must be documented.  See Appendix D:  Using Acronyms and Abbreviations.
+
+7 
+Documenting the Database Design in Oracle Designer
+The process of converting the data model into tables and foreign key constraints is automated by the Database Design Transformer.  The Database Design Transformer creates and maintains database designs based upon entity, attribute, and relationship information in the data model.  The Database Design Transformer creates tables to record instances of each entity, columns to store the attributes, and constraints to implement the relationships between entities.  It also creates constraints to enforce any unique identifiers that have been defined, and indexes to support foreign keys.  The Database Design Transformer generated database design is stored in the Designer Repository.  This model is subsequently used by the Server Generator to generate the SQL DDL statements required to create the associated database objects.
+7.1 Overall Guidelines
+As stated in Section 1.3 Prerequisites, there are prerequisites about a person's knowledge and experience with Oracle's Designer tool.  These prerequisites have been used to determine the level of detail provided in this document on the use of Designer for entity-relationship modeling.
+7.1.1 Object Properties
+For the various database objects, Oracle Designer provides a Properties window where details can be entered for the object.  Within this standards document, these properties fall into the following categories:
+* they are mandatory on the Properties window and there are standards on the information to be entered, or
+* they are optional on the Properties window, mandatory by ministry standard, and there are standards for the information to be entered, or
+* they are optional on the Properties window, optional by ministry standard, and there are no standards on the information to be entered.  However, if the details are available, good modeling practices support entering these details into the repository.
+7.1.2 Structured Notes
+Issues, decisions, and notes must be recorded in the Notes property of the relevant object (e.g. entity, attribute, function, table, column, and module).  The format is to prefix the text with indicators as follows:
+<Phase> <Note Type> <Date> <Initials> <Note Text>
+* <Phase> is one of A, D, B, indicating the phase of development (Analysis, Design, or Build)
+* <Note Type> is one of ?, !, A, D indicating the type of note (Question, Point, Answer, or Decision)
+* <Date> is in the format YYYY-MM-DD indicating the date on which the issue was raised, or resolved
+* <Initials> is the initials of the analyst who raised this issue
+An example is
+A? 1998-01-18 GW There may be an opportunity to share this functionality with 'Record contact information about a new permittee/PMP'er/Certificate holder.
+The notes must be organized as follows:
+OUTSTANDING ISSUES
+A! 1998-01-21 GW	GENERAL LOCATION, and all information specifically related to time/place details have been deleted (R. Adams,1998-01-19) from EXAMINATION entity and the entire entity has been deleted.
+IMPLEMENTATION NOTES
+
+MISCELLANEOUS
+
+CHANGE HISTORY
+7.2 Server Model Diagrams
+The Server Model Diagrammer is a graphical tool for modeling database schema designs.  The database objects within the schema can be represented graphically on one or more data diagrams.  These diagrams depict the relationships between tables, views, and snapshots recorded in the Designer repository.  After a first-cut database design is completed using the Database Design Transformer, the Server Model Diagrammer can be utilized to refine the database design.
+The ministry standard is to produce a server model diagram in the following situations:
+* there are data model constructs not directly implemented into database objects.  This would include for example, exclusive relationships, and supertype/subtype entities.
+* there are tables created for physical reasons such as report processing that do not contain foreign keys, or have not been modeled in the ERD as a 'system' subject area.
+* there is de-normalization of the data model.
+Each server model diagram must be a subject area to provide context for each situation.
+The ERD diagramming standards also apply to server model diagrams.
+7.3 Keeping the Data Model Current
+When creating the database model from the data model, there may be corrections and/or additions to the data requirements (i.e. new column).  Aside from de-normalization or other issues specific to physical implementation, all such changes first must be reflected in the data model.  The server model is then generated from the modified data model, and the DDL is lastly generated to create or modify the database objects.
+7.4 
+Table Definition Properties
+PropertyValueMandatory(M) / Optional(O)Name* use the table name generated by the Database Design Transformer, which would be from the associated entity's plural name
+* must be prefixed with the Name as entered in the Application System Properties sheet (see Section 5.2 Application System Properties)
+* if the Data Persistence property is set to "Session" or "Transaction", the table name must be suffixed with '_GTT".MAlias* if a table definition is generated using the Database Design Transformer, the default is the short name of the corresponding entity; otherwise, an appropriate short name must be entered, using the standard for the entity short name.MCol Prefix* leave blank since the ministry standard is to not use column prefixesJournal* the four audit columns described in Appendix C: Standard Attribute Definitions provide a limited historical audit of changes.  In some cases, a table may require a more comprehensive and complete history of changes, such as the before and after images.
+* do not use journal tables if the business has a requirement to view a history of changes.  Separate entities must be created to support this requirement.
+* note that the journal tables do not exist as entities in the data model, nor are they listed in the table definitions.  Designer creates the journal table DDL along with the base table DDL. 
+* edit the journal table DDL so that the journal tables are named as follows:
+<application_name>_<entity_short_name>_JN
+* select the "Server" option since the ministry standard is to use database triggers to maintain journal tables.  Do not use any client-side journaling code.
+Note:	The table being journalled must have a non-updateable primary key, so that each row in the journal table can be traced back to the original row in the source table.O
+
+PropertyValueMandatory(M) / Optional(O)Volumes These fields are automatically populated from the corresponding fields for the associated entity.  If the table is not a direct implementation of an entity, values may be entered.Start Rows* estimated number of rows when the table is initially loadedOEnd Rows* estimated number of rows at the end of 3 yearsOData Persistence* if this table will be a global temporary table, then either "Session" or "Transaction" must be selected
+* if this table will not be a global temporary table, then 'Permanent" must be chosenMDocumentation Comment* do not enter any information in this field
+* Information in this field ends up as part of the table definitions in the Oracle database.  The ministry standard is to exclude Designer information from the DDL of the object.  Repeating Oracle Designer data model information in the Oracle database table DDL is redundant, and leads to the possibility of information conflicts between the two locations.  Additionally, the Designer repository is a richer source of information about database design.Description* Mandatory, generated by the Database Design Transformer
+* if the table is a direct implementation of an entity, the table description must exactly match the entity's description
+* if the table is not a direct implementation of an entity, use the same standards as those for the entity descriptionMNotes* optional if notes are not inherited from an associated entity
+* use the same standards as those for the entity noteO
+7.5 
+Column Definition Properties
+PropertyValueMandatory(M) / Optional(O)Name* use the column name as generated by the Database Design Transformer, which would be the name of the corresponding attribute.
+* if a supertype (Single Table) implementation of subtypes is chosen, Designer will generate a discriminator column called 'TYPE'.  Modify this name to add a meaningful description to the beginning of the name, and the suffix of 'CD'.  For example, a PARTY table may be subtyped with a discriminator column of PARTY_TYPE_CD.  Allowable values are defined using a domain, and each value must correspond to a subtype short name.MSequence in Table* Column ordering is as follows:
+* Primary key
+* Other columns grouped by logical semantics
+* BLOB and CLOB columns
+* ENT and UPD audit columnsMScalar Note:	If a domain is not used to define the data type, the properties in the Scalar Group must be entered.  If a domain is used for a column, these properties are filled automatically.Datatype* for text, use VARCHAR2 or CLOBMAverage Length* used for sizing estimatesOMaximum Length* Carried forward from the associated attribute
+* if a domain is used for the attribute, the Maximum Length must be the same value as the Max Col Length property of the domainMDecimal Places* mandatory for datatypes of NUMBER or DECIMALODefinition Default Value* must not be used if a column is optional
+* must be appropriate for the  column datatype
+Note:	Use of defaults must be examined carefully, as default values may lead the inexperienced user to enter erroneous dataO
+
+PropertyValueMandatory(M) / Optional(O)Volumes Note:	The Volume Group estimates the percentage of columns in the table that will contain values.  If a column is NOT NULL (Optional? = No) then these volumes will be 100 (%). These values are important for sizing estimates.Initial Volume* the percentage of columns that will contain values at initial data loadOFinal Volume* the average percentage of columns that will contain data when the system is activeODocumentation Comment* do not enter any information in this field
+* Information in this field ends up as part of the table definitions in the Oracle database.  The ministry standard is to exclude Designer information from the DDL of the object.  Repeating Oracle Designer data model information in the Oracle database table DDL is redundant, and leads to the possibility of information conflicts between the two locations.  Additionally, the Designer repository is a richer source of information about database design.Description* if the column does not have an associated attribute use the same standards as those for the attribute description
+* the column Description must be the same as the corresponding attribute's DescriptionMNotes* Where applicable, the following must be documented with each column:
+> Derived values - specify algorithms
+> validation
+* any other column-specific notes must be included hereONote:
+1. Allowable values must be inherited from a domain definition.  Do not create the allowable values as objects under the Allowable Values node.
+
+7.6 
+Primary Key Constraints
+PropertyValueMandatory(M) / Optional(O)Name* the default name, as generated by the Data Design Transformer, must be kept as is.  It will have the following format:
+table alias_PK
+As an example, for the table CUSTOMER with the alias CUST, the primary key will be:
+CUST_PKMValidate In* must be 'Server' or 'Both'MDescription* a brief description of the primary key constraintONotes* any notes for the constraint, recorded in the format of structured notesOColumns Node* These sequencing of these entries determine the order of the columns in the Primary Key; ensure that their order is correct.Column* the column name is specified via an LOVMSequence in Key* controls the order of the columns within the primary key
+* the relative ordering of the columns in the primary key must match the relative ordering of the corresponding columns in the tableM7.7 
+Foreign Key Constraints
+Database constraints are mandatory for foreign keys.  Foreign key constraints must include cascade characteristics.  Cascade updates are not permitted.  Cascade deletions must only be established for tables that are maintained in the same Form and same Logical Unit of Work.
+
+PropertyValueMandatory(M) / Optional(O)Name* the default name, as generated by the Database Design Transformer, must be kept as is.  The name will have the following format::
+<table alias of dependent>_<table alias of independent>_FKn
+* The n is used at the end of the foreign key constraint name if there is more than one foreign key reference to the same independent table.  The n represents a sequential number.  When there is more than one relationship to the same independent entity, the name of the second and subsequent foreign keys includes part of the relationship name.  These foreign keys must be renamed manually to delete the relationship name and add the sequential number
+Note:	In rare cases, the constraint name must be unique within the first 21 characters, due to a known bug in the Forms Generator.  In these cases, it will be necessary to modify the constraint name manually, after using the Database Design Transformer.
+Some examples are:
+PROF_PROF_FK
+AGFN_AGEN_FK
+AGFN_AGEN_FK1MComplete?* Must be YesMEnable?* Must be YesMValidation* Validate in* must be Server or BothMDefer Status* must be NOT DEFERRED.MCascade Rules Delete Rule* must be Restricted to prevent deletion of a row in the parent join table when a related row exists in the child join tableMUpdate Rule* must be Restricted or the 'Generate Database from Server Model' utility will not build the constraintM
+
+PropertyValueMandatory(M) / Optional(O)Joining To Primary Key Joined to* MUnique Key Joined to* Foreign keys must not be joined to unique keys.Documentation Description* a brief description that reflects the relationshipONotes* any structured notes on the foreign keyOColumns Node* the columns in a foreign key must have the same relative sequencing as the columns in the primary key of the parent table
+* the foreign key columns in the child table must have the same relative sequencing as the corresponding columns in the foreign keyColumn* name of the column in the foreign keyMSequence in Key* controls the order of the columns within the foreign key
+* MJoin Column* name of the corresponding column in the join tableM
+7.8 
+Unique Key Constraints
+Do not create unique indexes; rather, create a Unique Key.  When the DDL is generated from the table implementation, a unique index will be generated automatically.
+PropertyValueMandatory(M) / Optional(O)Name* The name will have the following format:
+<table short name> Ukn
+Note that some editing may need to be done on the name created by the database design transformer.
+* The n is used at the end of the unique key constraint name if there is more than one unique key constraint.  The n represents a sequential number.
+Some examples are:
+PROF_UK
+AGFN_UK
+AGFN_UK1MValidate in* must be Server or BothMDocumentation Description* a brief description of the constraintONotes* any structured notes specific to the constraintOColumns Node* These entries determine the columns in the Unique Key; ensure that their order is correct.Column* the column name is specified via an LOVMSequence in Key* controls the order of the columns within the unique key
+* the relative ordering of the columns in the unique key must match the relative ordering of the corresponding columns in the tableM7.9 
+Check Constraints
+PropertyValueMandatory(M) / Optional(O)Name* The name will have the following format::
+<table alias>_CKn
+* The n is used at the end of the check constraint name if there is more than one check constraint.  The n represents a sequential number.
+Some examples are:
+PROF_CK
+AGFN_CK
+AGFN_CK1
+* Create check constraints to validate arc relationships.MValidate in* must be Server or BothMWhere/Validation Condition* contains the constraint text for the check constraint, e.g.: RECEIVE_DATE <= SYSDATE
+* the condition must be a Boolean expressionMDocumentation Description* a brief description of the constraintONotes* any structured notes on the constraintO
+7.10 
+Indexes
+PropertyValueMandatory(M) / Optional(O)Name* Do not create an index object for primary or unique keys.  Instead, ensure that the appropriate primary and unique key objects are created.  The indexes will then be generated automatically in the DDL when the table implementations are generated.
+* If an index is required on a foreign key for performance reasons, create an index with the same name as the foreign key. 
+* secondary indexes are non-unique indexes that are not for foreign keys.  The names of these secondary indexes have the following format.
+<table alias>_SKn
+The n is used at the end of the secondary indexes if the table has more than one secondary index.  The n represents a sequential number.
+* Some examples are:
+PROF_SK
+AGFN_SK
+AGFN_SK1MIndex Type?* Should typically be "Not unique as unique indexes are generated by Designer when generating the DDL for the primary and unique keys. 
+* The type may be 'unique' for a function-based index that cannot be defined as a unique key in the data model.MForeign Key* mandatory if this index is for a foreign key relationshipODocumentation Description* a brief description of the indexONotes* any structured notes specific to the indexOColumns NodeColumn* name of the column included in the indexMUsage Sequence* sequence of the column within the index
+* the relative ordering of the columns in the index must match the relative ordering of the corresponding columns in the tableM
+7.11 
+Sequences
+Sequences can be implemented in one of two ways: as an Oracle sequence or as a Code Control sequence within a table.  An Oracle sequence is faster and simpler, but gaps can appear in the key values.  The Code Control sequence approach is better suited to situations where the values are required to be continuous, such as invoice numbers.  However, in a multi-user environment, there is potential for lock conflicts.  Please consult the Oracle technical documentation for a detailed description of these two approaches.
+The same Oracle sequence may be used for more than one table, given that the primary key has no inherent meaning beyond uniquely identifying a row.  However, the ministry standard is that an Oracle sequence is to be used for only one table.  If a table has more than one column requiring the generation of values, each column must have its own sequence.
+For each sequence, the 'For Column' node must be completed for each column that uses values generated by the sequence.
+Sequences may be defined using the Repository Object Navigator.
+PropertyValueMandatory(M) / Optional(O)Name* the naming convention is 
+application name_table alias_SEQn
+* if multiple sequences are required for a single table, the sequence name must be suffixed with an integer where the integer increments sequentially
+* Some examples are:
+JUSTIN_AGEN_SEQ
+ACCAS_EMP_SEQ
+ACCAS_EMP_SEQ1MCode Control?* either Oracle sequence or Code Control sequence
+Note:	It is the ministry standard to use Oracle sequence unless there is an explicitly documented reason to use a Code Control sequence.
+Code control sequences (i.e., max(ID)+1) are required to match pre-numbered stock where numbers must be contiguous.  Database sequences are recommended for all other situations.MDocumentation Description* contains a description of the sequenceONotes* contains any structured notes on the sequenceO
+7.12 
+Views
+
+PropertyValueMandatory(M) / Optional(O)Name* the naming convention is 
+application name_<view name>_VW
+* the <view_name> must follow the same naming standards as table names.MDescription* MColumns Node* view columns are to follow the same naming standards as table columns.
+
+7.13 
+Preparing Designer to Produce the Physical Database Design
+7.13.1 Oracle Database 
+The DBA Group does not use Designer to generate DDL statements for creating databases.  However, an Oracle database needs to be created in order to create other Designer objects for which DDL statements can be generated.
+PropertyValueMandatory(M) / Optional(O)Name* The Oracle database name must be the same as the account name of the schema that will own the physical database objects.  This is also the Name as entered in the Application System Properties sheet (see Section 5.2 Application System PropertiesMLocal Name* Set to the same value as Name.MOracle Version* Consult with the DBAs on the appropriate Oracle version.M7.13.2 Storage - Tablespaces
+PropertyValueMandatory(M) / Optional(O)Name* Create the following two tablespaces:
+&&OWNER_TABLES
+&&OWNER_INDEXES. 
+* When the DDL is executed, the "&&" allows specifying the tablespace name to suit the different tablespace naming requirements of the development, test, production and training environments.M
+7.13.3 Users
+PropertyValueMandatory(M) / Optional(O)Database* Select the Oracle Database under which the User is created.MName* The Oracle database name must be the same as the account name of the schema that will own the physical database objects.MInitial Password* Set to the same value as Name.MDefault Tablespace* Select "&&OWNER_TABLES"M7.13.4 
+Table Implementations
+A table implementation must be created for each table in the server model.
+PropertyValueMandatory(M) / Optional(O)Global Synonym Name* The synonym name will have the following format:
+<table name>OTablespace* Select "&&OWNER_TABLES"M7.13.5 User Object Index Storages
+Under each table implementation, create a user object index storage for each primary key, unique key and index associated with that table.
+PropertyValueMandatory(M) / Optional(O)Tablespace* Select "&&OWNER_INDEXES"M7.13.6 View Implementations
+A view implementation must be created for each view in the server model.
+PropertyValueMandatory(M) / Optional(O)Global Synonym Name* The synonym name will have the following format:
+< view name>O7.13.7 Sequence Implementations
+A sequence implementation must be created for each sequence in the server model.
+PropertyValueMandatory(M) / Optional(O)Global Synonym Name* The synonym name will have the following format:
+< sequence name>OStart* Typically set to 1MIncrement* Typically set to 1MCache Value* Review business requirements to determine the appropriate cache size.
+* If a value is not entered here, the database default will be used.O
+7.13.8 Roles
+PropertyValueMandatory(M) / Optional(O)Name* Create a role where the name is in the following format:
+<schema owner>_USER
+* using the Database Object Privileges node, for each table, grant select, insert, update and delete to this role.
+* using the Database Object Privileges node, for each sequence, grant select to this role.M8 
+Generating the Physical Database
+8.1 DDL Statements
+The ministry standard is to create the physical database objects (tables, indexes, constraints, sequences, grants) using DDL statements generated from the Design Editor against the schema objects (i.e. table implementations, index implementations, sequence implementations etc).  This standard applies to all schemas created in the development, test, training and production database environments.
+8.2 Table Ownership
+See Database Environment Standards document.
+8.3 Public Synonyms
+See Database Environment Standards document.
+8.4 Tablespaces
+See Database Environment Standards document.
+8.5 Tables
+* Constraints must be included in DDL statements when creating tables.
+
+9 Updating the Entity-Relationship Model and Database Design
+Changes to the data model result from new or evolving business requirements.  A model-driven data architecture is followed for these changes, that is, the models are reviewed and updated, then the scripts to create or modify the physical database structures are generated from the model and then applied to the various database environments under an implementation schedule.
+The ministry standard is to follow these steps:
+1. Gather the requirements, using the template for Data Architecture Modification Request.
+Define the requirements from the business viewpoint, not from the narrower application perspective.  The business requirements document must state the previous business practice, the new business practice, and identify the differences between the two.
+2. Review the data model for possible impact
+3. Update the data model as required
+4. Update the database design
+5. Generate the appropriate DDL to implement the changes into the physical database.
+The data model is a description of the business.  As mentioned at the beginning of section 6 Database Design, the database design is the implementation of the data model into the physical database, with considerations for performance and the limitations of the database.
+
+Appendix A:  Attribute Naming Conventions
+In general, the format for attribute names is as follows:
+Prime Word + Modifier + Fact + Class Word
+where
+Prime Word	Identifies to whom or to what the fact applies or belongs.  It is the name of the entity, to which the fact refers.
+Modifier	Identifies which fact is being defined.  A modifier may consist of one or more words.
+Fact	Identifies what is being defined.  It is a piece of detail about an entity.
+Class Word	Identifies the category of data to which a fact belongs.  See Appendix B:  Standard Class Words for Attributes for a list of class words.
+Example	person employment end date
+Prime Word	Whose employment end date?  The person's employment end date.
+Modifier	Which end date?  The employment end date.
+Fact	What is being defined?  The end date.
+Class Word	The attribute is categorized as containing a date.
+Standards
+At a minimum, all attributes must contain the fact and class word.
+Evaluate the use of prime and modifier words as described in the following Guidelines section.
+Guidelines
+* The prime word is typically the entity name.  Using the prime word in an attribute name is optional unless it is needed for additional clarification of the meaning.
+There are two philosophies regarding the inclusion of the prime word: First, those that believe that attributes should stand alone, separate from their entities, and believe that the prime word must be included.  Those that believe that attributes exist only within the context of an entity believe that it is redundant to include the prime word. 
+Differing philosophies aside, although data modeling is to be tool independent, use of the prime word, to a certain extent, depends on the CASE tool and RDBMS being used.  For example, in Andersen's CASE tool, the attributes are defined separately from the entities and thus, similarly named attributes must include the prime word for differentiation.  However, since attributes are secondary objects to entities in Oracle Designer, they do not necessarily require the prime word.
+As stated earlier, Oracle's Designer and RDBMS are the selected tools for the ministry.  This would then seem to indicate that the prime word is unnecessary.
+However, there are circumstances when the prime word is necessary.  For example, in the ADDRESS entity, do we call the first line of the address FIRST LINE TXT or ADDRESS FIRST LINE TXT?  There is a clarity concern with FIRST LINE TXT.  "LINE" is actually a poor name for a fact since it represents the presentation of the fact, not the fact itself.  If we were splitting the address into its true components such as street name etc, then clarity would not be an issue.
+In the past, another reason for including the prime word in the attribute name was to help make SQL understandable.  However, since SQL is part of a physical implementation, and not part of a data model, this is not a valid reason for including the prime word.
+* The modifier further qualifies the fact.  If the fact is sufficiently explicit within the context of the entity, then the modifier is optional.  If the entity name is not the answer to the question "which fact?", then the modifier is required. 
+
+Examples of Attribute Names
+Attribute FormatAttribute NameCommentPrime WordModifierFactClass Wordappearanceinterpreterrequiredyninterpreter required ynaddressfirstlinetxtaddress first line txtThe name of this attribute reflects the presentation requirements for mailing purposes, therefore, the prime word is requiredpersonfirstgivennmfirst given nmpersonsecondgivennmsecond given nmpersonbirthdtbirth dtlicencelicenceexpirydtexpiry dteventevent detailtxtdetail txtHair colourhaircolourcdcolour cdHair colourhaircolourdsccolour dsc
+Restricted Words
+The ministry does not intend to provide an exhaustive list of inappropriate words for naming attributes.  The suitability of a word can be determined by:
+1. following the ministry's standards for naming attributes, and 
+2. applying general data modeling principles.
+
+Appendix B:  Standard Class Words for Attributes
+The following is a list of standard class words that are to be used when naming attributes.  The class word assists in identifying the attribute domain. 
+The class words are not standard abbreviations, and thus, are not to be used as abbreviations.
+Where a domain is specified for the class word, all attributes ending in that class word must belong to that domain.
+Identifier Attributes
+Class WordMeaningStandard DomainLogical FormatOracle DatatypeSizeidUnique identifier that contains a system-generated number and used internally during processing to access or link data.  The identifier has no business meaning, and the value is not shown on end user reports or screens.  It is always generated by an Oracle Sequence Number and never generated by using a "select max()+1 from..."  SQL statement.
+* users can't enter/change the values 
+* value can be visible to users as needed but are not typically displayed
+* Unique integer
+* Primary identifier on its own
+* System generated surrogate key
+Examples:  resolution entity, party idIDset by domainset by domainset by domainguidAn identifier whose value is guaranteed to be globally unique.GUIDset by domainset by domainset by domain
+
+Class WordMeaningStandard DomainLogical FormatOracle DatatypeSizenoNumeric or alphanumeric unique identifier that has business meaning, as opposed to identifiers with the 'id' class word.
+* May be user-entered or modifiable 
+* may be generated by system or may be generated by another system
+* alphanumeric
+* may be unique identifier on its own
+* values are optional
+* possible to have both an ID and a NO attribute in the same entity
+* Examples:  Correctional Services Number (CS NO), Social Insurance Number (SIN NO), invoice from a ... (Invoice NO)
+Provide documentation in the notes confirming the optionality and uniqueness.nonenumber
+characternumber
+varchar2as requiredseq noPartial Identifier that is usually part of the primary key.  It is always generated by "select max()+1 from..."  SQL statement
+Along with value inherited from parent entity, used to form composite primary identifierSEQUENCEset by domainset by domainset by domaincdThe short character string, such as an acronym or abbreviation, which identifies the instance.nonevarchar2varchar2as required
+
+Text Attributes
+Class WordMeaningStandard DomainLogical FormatOracle DatatypeSizedscThe word or phrase that identifies the instance.Nonevarchar2varchar2as requiredtxtFree format alphanumeric dataNonevarchar2
+textvarchar2
+CLOBas requirednmA designation for a person, place or thing (e.g., agency_nm, business_nm, and first_given_nm).Nonevarchar2varchar2as requiredbinBinary data such as pdf files, images, video clips, Word documents.BLOBset by domainset by domainset by domainynA flag representing the values yes or no.  The name of the attribute is expressed in the positive, such as ACTIVE YN instead of INACTIVE YN.
+Note that attributes in this class are mandatory.  Optional YN attributes are subject to review and approval by the Corporate Data Architect.YN INDICATORset by domainset by domainset by domain
+Quantity Attributes
+Quantity attributes are those on which some arithmetic can be performed, such as addition and subtraction.  Comparisons also can be performed on these attributes.
+Class WordMeaningStandard DomainLogical FormatOracle DatatypeSizenbrAn integer that does not represent any of the quantity attributes.  noneintegernumberas requiredqtyA whole number determined by counting discrete instances (e.g., ORDERED VEHICLE QTY, DELIVERED VEHICLE QTY).  It answers a question of the form "How many...?".  It does not have any units.  (See "val" suffix below).noneintegernumberas requiredamtA currency amount that answers a question of the form "How much...?", and specifies an amount of money (e.g., HOURLY RATE AMT, UNIT PRICE AMT, PAYMENT AMT, OUTSTANDING BALANCE AMT).
+Canadian currency is assumed; otherwise, the currency must be specified, either in the attribute name or in a separate currency attribute.Nonenumbernumberas required
+
+Class WordMeaningStandard DomainLogical FormatOracle DatatypeSizevalA numeric value representing:
+* Dimension where the value answers questions of the form "How long/wide/heavy/etc....?".  Some examples of attributes are Room Width, Shoe Size, and Waist Measurement.
+* Interval or duration, where the value answers questions of the form "For how long...?".  Some examples of attributes are Lesson Duration, Mortgage Repayment Period.
+* A factor arrived at when one quantity or amount is considered in relation to another quantity or amount.  It answers questions of the form "How much ...?  Some examples are PAY RATE VAL, BLOOD ALCOHOL VAL CONCENTRATION VAL and TIRE PRESSURE VAL.
+This class of attribute requires a unit, such as feet, inches, minutes, months, $/hour, (Blood alcohol concentration, pounds per square inch.  The unit must be denoted either
+* in the attribute name, which ensures that all instances of the attribute are expressed in the same units, or
+* in an additional attribute that holds the unit of measure
+Note that percentages are included in this class.  The attribute definition must indicate how the percentage is derived.  nonenumbernumberas required
+Date and Time Attributes
+The first table of time quantity class words is for those that answer a question of the form "When ...?" in relation to a single event.  Some examples are a transaction timestamp, order date, and arrival year.
+Class WordMeaningStandard DomainLogical FormatOracle DatatypeSizedtmUsed when both the date and time portions of the date data type are of interest (e.g., audit fields, appointments)DATE TIMEdatedatedetermined by DBMSdtUsed when only the calendar portion of the date data type is of interest/ (e.g., date of birth in a school setting whereas a hospital setting would be interested in both the date and time of birth and thus would use the 'dtm' class word)nonedatedatedetermined by DBMSyySpecifies the year in which something happened, such as graduation from high school.  The year is always stored as four digits.noneintegernumber4ymThe month and year in which something happened.nonedate with the day standardized to the 1st day of the monthdatedetermined by DBMStmSpecifies the time but not the date, such as in a bus timetable.nonedate with the date portion standardized throughout the system to a particular day, such as January 1, 2000datedetermined by DBMSwkdSpecifies only the day within a week, such as in a bus timetable.  with a standard sequential coding beginning at 1 to represent Sunday and ending with 7 to represent Saturday.
+Weekdays are represented as integers only when the attribute is used in calculations.noneIntegernumber1
+
+Class WordMeaningStandard DomainLogical FormatOracle DatatypeSizemdSpecifies only the day within a month, such as a mortgage repayment date on the 15th of each month.  Attributes in this class must be two digits in lengthnoneintegernumber2mmSpecifies only the month.  Attributes in this class must be two digits in length
+Months are represented as integers only when the attribute is used in calculations.noneinteger with a standard sequential coding beginning with 1 to represent Januarynumber2
+Notes
+* There are class words for individual date and time elements, such as 'yy' for year and 'ym' for month of year.  This does not mean that the ministry advocates storing for example, date values in three separate attributes, such as year, month, and day.  Determining the appropriate level of decomposition will depend on what has meaning and value to the business.
+* The year is always stored as four digits.
+
+Appendix C: Standard Attribute Definitions
+Audit Attributes
+Each entity must have following audit attributes.
+Audit AttributesNameDefinitionStandard DomainLogical FormatOracle DatatypeSizeOptionalityent dtmDate and time at which the row is inserted into the table.DATE TIMEset by domainset by domainset by domainmandatoryent user idAn identifier indicating who or what inserted the row.USER IDset by domainset by domainset by domainmandatoryupd dtmDate and time at which the row is updated.DATE TIMEset by domainset by domainset by domainoptionalupd user idAn identifier indicating who or what updated the row.USER IDset by domainset by domainset by domainoptional
+Notes
+* The values and length for ent user id and upd user id are dependent on the method chosen by the application architecture to identify the person.  For example, Oracle Forms applications uses the Oracle id assigned to the person, JAVA applications can use the person's name.
+* The two date audit attributes, ent dtm and upd dtm used to end in 'dt' instead of 'dtm'.  For consistency's sake, legacy applications that already use 'dt' should continue to do so.  New applications are expected to use 'dtm'.
+* These attribute names do not meet the ministry standard for attribute names as defined in Appendix A:  Attribute Naming Conventions.  The class word is incorrect and 'upd' is not an approved abbreviation.  However, these names have been used extensively throughout previous application developments.  To maintain consistency, these names have been kept, with the above noted change.
+
+Person Name Attributes
+Person name attributes are to be defined as follows:
+Person Name AttributesNameStandard DomainLogical FormatOracle DatatypeSizefirst given nmPERSON NAMEset by domainset by domainset by domainsecond given nmPERSON NAMEset by domainset by domainset by domainthird given nmPERSON NAMEset by domainset by domainset by domainsurname nmPERSON NAMEset by domainset by domainset by domainNotes
+* All four name attributes must be defined.
+Address Attributes
+For simple addressing requirements, address attributes are to be defined as follows:
+Address AttributesNameStandard DomainLogical FormatOracle DatatypeSizeaddress first line txtADDRESS LINEset by domainset by domainset by domainaddress second line txtADDRESS LINEset by domainset by domainset by domainaddress third line txtADDRESS LINEset by domainset by domainset by domainpostal code txtnonevarchar2varchar210
+Notes
+* An address must be composed of the above four attributes along with relationships to city, province and country entities.
+* Consider sharing existing city, province, and country tables with other applications that have already defined and populated these tables.
+* Do not store the space separator in the postal code attribute.
+Province Attributes
+Province AttributesNameStandard DomainLogical FormatOracle DatatypeSizeprovince cdnonevarchar2varchar22province nmnonevarchar2varchar240
+Phone Number Attributes
+For simple phone number requirements, the attribute is defined as follows:
+Phone Number AttributesNameStandard DomainLogical FormatOracle DatatypeSizephone nononevarchar2varchar213
+Notes
+* The phone number attribute is to contain only digits.  Do not store the parentheses or dash.
+
+Appendix D:  Using Acronyms and Abbreviations
+Acronyms/Abbreviations
+1. Full words must always be used, unless faced with length constraints by the database management system.
+2. If, due to length constraints, acronyms have been used, ensure that the acronym and the full name are documented in a business glossary.
+3. If a standard abbreviation or acronym exists within an industry or business context, then use that abbreviation instead of creating a new abbreviation.
+4. The class word must never be abbreviated.
+5. Abbreviate modifier words before choosing to abbreviate the fact word (i.e. the primary subject).
+6. Do not create different abbreviations for the same word.  Use one abbreviation consistently.  If, due to length constraints, an attribute or entity name still needs to be shortened after abbreviating, consider dropping a modifier word, if multiple modifiers exist in the name, and it does not compromise the meaning.
+7. Do not abbreviate words that are five or fewer characters unless necessary.
+8. If a modifying word with similar business connotation exists, use that word instead of using a new abbreviation.
+9. Abbreviate only the root form of a word.  For example, 'character' is the root form of 'characteristic'.  'Characteristic' and 'character' would both be abbreviated to 'char'.
+10. Avoid abbreviations that are also words.  For example, use shpmnt instead of ship for shipment.
+11. When creating an abbreviation, try removing vowels (except for leading vowels) and double consonants.  If the resulting abbreviation is unrecognizable, it may be necessary to include a vowel in the body of the word.
+12. Abbreviate words to a length that is most likely able to fit wherever an abbreviation is required, yet still provides some recognizable meaning to the word.  A good rule of thumb is to abbreviate words to 3 to 5 characters.  In some instances, an abbreviation of two characters is allowable if the meaning of the abbreviation is clear and/or it is in common usage such as 'oz', 'ft', or 'lb'.
+13. Words in attribute names may be abbreviated to be consistent with the same word in their associated entity name.  The objective is to be consistent.
+
+If further assistance is required, contact the Corporate Data Architect to determine the acronym(s) or abbreviation(s) required. 
+The Corporate Data Architect will review the acronym(s) or abbreviation(s) and may request changes to ensure clarity and consistency throughout the data model.
+If you have created a new abbreviation using the rules above, these abbreviations do not become part of the approved abbreviation, codes, and acronyms list.
+Use of Significant Words
+Words such as who, what, when, or where are not allowed.
+The use of articles and prepositions (such as the or of), adjoining words or conjunctions (such as and or or), qualifying words such as new or old, and numbers must be on an exception basis.  Review and approval by the Corporate Data Architect is required.
+
+Use of Special Characters
+Special characters, including brackets, quotation marks, question marks, and slashes are not permitted.  Dashes are allowed only in legitimately hyphenated words.
+Underscores will not be used except where needed to separate words in physical implementation objects (like tables, columns, and modules).  The Designer tool will insert underscores, when required, during transformation from data model to database objects. 
+Ministry Approved Standard Acronyms
+Currently, there are no ministry approved standard acronyms.
+Ministry Approved Standard Abbreviations
+The following table lists the abbreviations approved by the ministry.  They are to be used only when encountering space limitations.
+Full WordAbbreviationAverageAVGCreditCRDebitDRDepartmentDEPTDescriptionDESCJournal entryJEMaximumMAXMiscellaneousMISCMinimumMINPercentPCTYear to dateYTD
+Appendix E:  Standard Domains
+The following table lists domains that constrain the values that may be held by an attribute.
+Domain NameDescriptionLogical FormatOracle DatatypeSizeUSER IDAn identifier for the person who created this record.varchar2varchar230DATE TIMEDate and time on which an activity occurred.datedatedetermined by DBMSYN INDICATORHolds a Yes or No answer to a suitably worded question about the entity instance.varchar2varchar21ADDRESS LINERepresents one line of non-validated address datavarchar2varchar230IDSystem Generated Unique Identifier.numbernumber15GUIDA global unique identifier.varchar2varchar2100PERSON NAMEA text string to indicate one component of the person's name, such as the first name or the surname.varchar2varchar225SEQUENCEAn integer that forms part of the primary identifier within the parent id.numbernumber15BLOBUnstructured binary data such as images (up to 4 GB)textCLOB determined by DBMSCLOBUnstructured character dataimage
+photograph
+sound
+videoBLOB determined by DBMSLONG TEXTOracle specific text stringvarchar2varchar24000
+Use equivalent datatypes in other, non-Oracle databases.
+Where the database has a specific datatype for date and/or time, use that datatype.
+
+Appendix F:  Subject Area Diagrams
+Entity-relationship diagrams are used to communicate business concepts.  To aid in communication, large models should be broken up into smaller, more easily understood segments.  It is also easier to maintain and manage smaller diagrams.
+Determine the purpose of the subject area diagram, and the intended audience.  Choose only those entities and relationships that are needed to support the purpose.  It may happen that the diagram will include only a subset of an entity's relationships.
+An approach to presenting large models can be found in Appendix B of Data Modeling Essentials, 2nd ed. by Graeme Simsion.
+Step 1:  Partition data model into subject areas.
+The first step is to divide the model into parts of manageable size (subject areas).  The rules for doing this are:
+1. Each entity must be assigned to one and only one subject area (i.e. no overlay between subject areas).
+2. Each subject area should consist of a maximum of nine entities excluding subtypes (following the "seven plus or minus two" principle).
+3. Each subject area should be named after one of the entities on the subject area (called the central entity).
+To work out the number of subject areas required, divide the number of entities in the model (excluding subtypes) by seven.  For example, if there are 23 entities, that means 3 subject areas are required.
+Step 2:  Produce context data model
+The context data model provides a summary of the model, showing all subject areas and how they fit together.  Each subject area should be shown as a circle, with relationships between them shown using arrows, labeled by the meaning of the relationship.  A relationship may be shown between subject areas when there a boundary relationship between them.  However, there is no need to show all boundary relationships - only the most important ones should be shown to avoid cluttering the diagram.
+Step 3:  Produce subject area data models
+Each subject area should be shown as a separate diagram.  Subject area data models include all entities assigned to that subject area plus, cross-references to other subject areas (foreign entities).  Subject area data models are shown as standard entity-relationship models with the following modifications:
+* The central entity is shown at the center of the diagram and large than all other entities.
+* Relationships to entities on other subject areas are shown using foreign entities.  Foreign entities are shown as dotted boxes, with their primary subject area in parentheses.
+Boundary relationships end up being duplicated in both subject areas involved.  Foreign entities should be shown on the outside of subject area diagrams, since they act as entry points and exit points to subject areas.
+
+Bibliography
+Anderson, Carrie and Wendelken, David, The Oracle(r) Designer/2000 Handbook, Addison-Wesley, 1997
+Barker, Richard, CASE*Method: Entity Relationship Modeling, Addison-Wesley.
+Carlis, John and Maguire, Joseph, Mastering Data Modeling:  A User-Driven Approach, Addison-Wesley, 2001
+Claxton, John C. and McDougall, Peter A., Measuring the Quality of Models, The Data Administration Newsletter, 4th Quarter 2000
+English, Larry P., Improving Data Warehouse and Business Information Quality, Wiley, 1999
+Koletzke, Peter and Dorsey, Dr. Paul, Oracle Designer Handbook, 2nd edition, Osborne/McGraw-Hill, 1999
+Kramm, Mark A. and Graziano, Kent, Oracle Designer, A Template for Developing an Enterprise Standards Document, Prentice Hall PTR, 2000
+Hay, David C., Making Data Models Readable, Information Systems Management 15(1) Winter 1998, pp. 21-33
+Hay, David C. Building Quality Data Models, Essential Strategies Inc., 1997
+Simsion, Graeme, Data Modeling Essentials, International Thomson Computer Press, 1994
+
+
+
+1 A form of a verb that ends in "ing" and operates as a noun in a sentence.  For example, "finding" and "booking".
+---------------
+
+------------------------------------------------------------
+
+---------------
+
+------------------------------------------------------------
+
+
+
+
+Data Architecture Standards
+
+Page 74 of 76
+
+
+
+
+
+Data Architecture Standards
+
+
+

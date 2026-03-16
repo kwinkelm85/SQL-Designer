@@ -20,37 +20,28 @@ SQL.Table = function (owner, name, x, y, z) {
 SQL.Table.prototype = Object.create(SQL.Visual.prototype);
 
 SQL.Table.prototype._build = function () {
-    this.dom.container = OZ.DOM.elm("div", { className: "table" });
-    this.dom.content = OZ.DOM.elm("table");
-    const thead = OZ.DOM.elm("thead");
-    const tr = OZ.DOM.elm("tr");
-    this.dom.title = OZ.DOM.elm("td", { className: "title", colSpan: 2 });
+    this.dom.container = $("<div class='table'></div>").get(0);
+    this.dom.content = $("<table></table>").get(0);
+    const thead = $("<thead></thead>").get(0);
+    const tr = $("<tr></tr>").get(0);
+    this.dom.title = $("<td class='title' colSpan='2'></td>").get(0);
 
-    OZ.DOM.append(
-        [this.dom.container, this.dom.content],
-        [this.dom.content, thead],
-        [thead, tr],
-        [tr, this.dom.title]
-    );
+    $(this.dom.content).append(thead);
+    $(thead).append(tr);
+    $(tr).append(this.dom.title);
+    $(this.dom.container).append(this.dom.content);
 
-    this.dom.mini = OZ.DOM.elm("div", { className: "mini" });
+    this.dom.mini = $("<div class='mini'></div>").get(0);
     this.owner.map.dom.container.appendChild(this.dom.mini);
 
-    this._ec.push(
-        OZ.Event.add(this.dom.container, "click", this.click.bind(this))
-    );
-    this._ec.push(
-        OZ.Event.add(this.dom.container, "dblclick", this.dblclick.bind(this))
-    );
-    this._ec.push(
-        OZ.Event.add(this.dom.container, "mousedown", this.down.bind(this))
-    );
-    this._ec.push(
-        OZ.Event.add(this.dom.container, "touchstart", this.down.bind(this))
-    );
-    this._ec.push(
-        OZ.Event.add(this.dom.container, "touchmove", OZ.Event.prevent)
-    );
+    $(this.dom.container).on("click", this.click.bind(this));
+    $(this.dom.container).on("dblclick", this.dblclick.bind(this));
+    $(this.dom.container).on("mousedown", this.down.bind(this));
+    $(this.dom.container).on("touchstart", this.down.bind(this));
+    $(this.dom.container).on("touchmove", (e) => e.preventDefault());
+
+    this.moveHandler = this.move.bind(this);
+    this.upHandler = this.up.bind(this);
 };
 
 SQL.Table.prototype.setTitle = function (t) {
@@ -96,8 +87,8 @@ SQL.Table.prototype.hideRelations = function () {
 };
 
 SQL.Table.prototype.click = function (e) {
-    OZ.Event.stop(e);
-    const t = OZ.Event.target(e);
+    e.stopPropagation();
+    const t = e.target;
     this.owner.tableManager.select(this);
 
     if (t != this.dom.title) {
@@ -109,7 +100,7 @@ SQL.Table.prototype.click = function (e) {
 };
 
 SQL.Table.prototype.dblclick = function (e) {
-    const t = OZ.Event.target(e);
+    const t = e.target;
     if (t == this.dom.title) {
         this.owner.tableManager.edit();
     }
@@ -120,8 +111,8 @@ SQL.Table.prototype.select = function () {
         return;
     }
     this.selected = true;
-    OZ.DOM.addClass(this.dom.container, "selected");
-    OZ.DOM.addClass(this.dom.mini, "mini_selected");
+    $(this.dom.container).addClass("selected");
+    $(this.dom.mini).addClass("mini_selected");
     this.redraw();
 };
 
@@ -130,8 +121,8 @@ SQL.Table.prototype.deselect = function () {
         return;
     }
     this.selected = false;
-    OZ.DOM.removeClass(this.dom.container, "selected");
-    OZ.DOM.removeClass(this.dom.mini, "mini_selected");
+    $(this.dom.container).removeClass("selected");
+    $(this.dom.mini).removeClass("mini_selected");
     this.redraw();
 };
 
@@ -226,8 +217,8 @@ SQL.Table.prototype.snap = function () {
 
 SQL.Table.prototype.down = function (e) {
     /* mousedown - start drag */
-    OZ.Event.stop(e);
-    let t = OZ.Event.target(e);
+    e.stopPropagation();
+    let t = e.target;
     if (t != this.dom.title) {
         return;
     } /* on a row */
@@ -237,7 +228,7 @@ SQL.Table.prototype.down = function (e) {
     let moveEvent;
     let upEvent;
     if (e.type == "touchstart") {
-        event = e.touches[0];
+        event = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0] : e;
         moveEvent = "touchmove";
         upEvent = "touchend";
     } else {
@@ -268,8 +259,8 @@ SQL.Table.prototype.down = function (e) {
         }
     }
 
-    this.documentMove = OZ.Event.add(document, moveEvent, this.move.bind(this));
-    this.documentUp = OZ.Event.add(document, upEvent, this.up.bind(this));
+    $(document).on(moveEvent, this.moveHandler);
+    $(document).on(upEvent, this.upHandler);
 };
 
 SQL.Table.prototype.toXML = function () {
@@ -350,10 +341,10 @@ SQL.Table.prototype.move = function (e) {
     SQL.Designer.removeSelection();
     let event;
     if (e.type == "touchmove") {
-        if (e.touches.length > 1) {
+        if (e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 1) {
             return;
         }
-        event = e.touches[0];
+        event = e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0] : e;
     } else {
         event = e;
     }
@@ -377,16 +368,17 @@ SQL.Table.prototype.up = function (e) {
         }
     }
     t.active = false;
-    OZ.Event.remove(this.documentMove);
-    OZ.Event.remove(this.documentUp);
+    $(document).off("mousemove", this.moveHandler);
+    $(document).off("mouseup", this.upHandler);
+    $(document).off("touchmove", this.moveHandler);
+    $(document).off("touchend", this.upHandler);
     this.owner.sync();
 };
 
 SQL.Table.prototype.destroy = function () {
     SQL.Visual.prototype.destroy.apply(this);
-    this.dom.mini.parentNode.removeChild(this.dom.mini);
+    $(this.dom.mini).remove();
     while (this.rows.length) {
         this.removeRow(this.rows[0]);
     }
-    this._ec.forEach(OZ.Event.remove, OZ.Event);
 };

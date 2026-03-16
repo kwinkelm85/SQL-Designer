@@ -14,18 +14,15 @@ SQL.Visual.prototype._init = function () {
     };
 };
 
-SQL.Visual.prototype._build = function () {};
+SQL.Visual.prototype._build = function () { };
 
-SQL.Visual.prototype.toXML = function () {};
+SQL.Visual.prototype.toXML = function () { };
 
-SQL.Visual.prototype.fromXML = function (node) {};
+SQL.Visual.prototype.fromXML = function (node) { };
 
 SQL.Visual.prototype.destroy = function () {
     /* "destructor" */
-    const p = this.dom.container.parentNode;
-    if (p && p.nodeType == 1) {
-        p.removeChild(this.dom.container);
-    }
+    $(this.dom.container).remove();
 };
 
 SQL.Visual.prototype.setTitle = function (text) {
@@ -40,4 +37,4 @@ SQL.Visual.prototype.getTitle = function () {
     return this.data.title;
 };
 
-SQL.Visual.prototype.redraw = function () {};
+SQL.Visual.prototype.redraw = function () { };

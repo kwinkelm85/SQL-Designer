@@ -3,29 +3,30 @@
 SQL.Rubberband = function (owner) {
     this.owner = owner;
     SQL.Visual.apply(this);
-    this.dom.container = OZ.$("rubberband");
-    OZ.Event.add("area", "mousedown", this.down.bind(this));
+    this.dom.container = $("#rubberband").get(0);
+    $("#area").on("mousedown", this.down.bind(this));
 };
 SQL.Rubberband.prototype = Object.create(SQL.Visual.prototype);
 
 SQL.Rubberband.prototype.down = function (e) {
-    OZ.Event.prevent(e);
-    const scroll = OZ.DOM.scroll();
+    e.preventDefault();
+    const scroll = [$(window).scrollLeft(), $(window).scrollTop()];
     this.x = this.x0 = e.clientX + scroll[0];
     this.y = this.y0 = e.clientY + scroll[1];
     this.width = 0;
     this.height = 0;
     this.redraw();
-    this.documentMove = OZ.Event.add(
-        document,
-        "mousemove",
-        this.move.bind(this)
-    );
-    this.documentUp = OZ.Event.add(document, "mouseup", this.up.bind(this));
+
+    // Bind global events for drag
+    this.moveHandler = this.move.bind(this);
+    this.upHandler = this.up.bind(this);
+
+    $(document).on("mousemove", this.moveHandler);
+    $(document).on("mouseup", this.upHandler);
 };
 
 SQL.Rubberband.prototype.move = function (e) {
-    const scroll = OZ.DOM.scroll();
+    const scroll = [$(window).scrollLeft(), $(window).scrollTop()];
     const x = e.clientX + scroll[0];
     const y = e.clientY + scroll[1];
     this.width = Math.abs(x - this.x0);
@@ -45,10 +46,10 @@ SQL.Rubberband.prototype.move = function (e) {
 };
 
 SQL.Rubberband.prototype.up = function (e) {
-    OZ.Event.prevent(e);
+    e.preventDefault();
     this.dom.container.style.visibility = "hidden";
-    OZ.Event.remove(this.documentMove);
-    OZ.Event.remove(this.documentUp);
+    $(document).off("mousemove", this.moveHandler);
+    $(document).off("mouseup", this.upHandler);
     this.owner.tableManager.selectRect(this.x, this.y, this.width, this.height);
 };
 

@@ -12,6 +12,9 @@ SQL.Relation = function (owner, row1, row2) {
 
     this.style = SQL.Designer.getOption("style");
     switch (this.style) {
+        case "logical":
+            this.relationColors = CONFIG.LOGICAL_RELATION_COLORS;
+            break;
         case "material-inspired":
             this.relationColors = CONFIG.MATERIAL_RELATION_COLORS;
             break;
@@ -45,18 +48,17 @@ SQL.Relation = function (owner, row1, row2) {
         this.dom.push(path);
     } else {
         for (let i = 0; i < 3; i++) {
-            const div = OZ.DOM.elm("div", {
+            const div = $("<div></div>").addClass("relation").css({
                 position: "absolute",
-                className: "relation",
-                backgroundColor: this.color,
-            });
+                backgroundColor: this.color
+            }).get(0);
             this.dom.push(div);
             if (i & 1) {
                 /* middle */
-                OZ.Style.set(div, { width: CONFIG.RELATION_THICKNESS + "px" });
+                $(div).css("width", CONFIG.RELATION_THICKNESS + "px");
             } else {
                 /* first & last */
-                OZ.Style.set(div, { height: CONFIG.RELATION_THICKNESS + "px" });
+                $(div).css("height", CONFIG.RELATION_THICKNESS + "px");
             }
             this.owner.dom.container.appendChild(div);
         }
@@ -108,19 +110,29 @@ SQL.Relation.prototype.hide = function () {
     }
 };
 
-SQL.Relation.prototype.redrawNormal = function (p1, p2, half) {
+SQL.Relation.prototype.redrawNormal = function (p1, p2, half, flipped) {
     if (this.owner.vector) {
-        let str =
-            "M " +
-            p1[0] +
-            " " +
-            p1[1] +
-            " C " +
-            (p1[0] + half) +
-            " " +
-            p1[1] +
-            " ";
-        str += p2[0] - half + " " + p2[1] + " " + p2[0] + " " + p2[1];
+        let str = "M " + p1[0] + " " + p1[1];
+        if (this.style == "logical") {
+            // Rectilinear (Manhattan) routing
+            str += " L " + (p1[0] + half) + " " + p1[1];
+            str += " L " + (p1[0] + half) + " " + p2[1];
+            str += " L " + p2[0] + " " + p2[1];
+        } else {
+            // Bezier Curve
+            str += " C " + (p1[0] + half) + " " + p1[1] + " ";
+            str += p2[0] - half + " " + p2[1] + " " + p2[0] + " " + p2[1];
+        }
+
+        if (this.style == "logical") {
+            if (flipped) {
+                this.dom[0].setAttribute("marker-end", "url(#one)");
+                this.dom[0].setAttribute("marker-start", "url(#crowsfoot)");
+            } else {
+                this.dom[0].setAttribute("marker-end", "url(#crowsfoot)");
+                this.dom[0].setAttribute("marker-start", "url(#one)");
+            }
+        }
         this.dom[0].setAttribute("d", str);
     } else {
         this.dom[0].style.left = p1[0] + "px";
@@ -140,8 +152,22 @@ SQL.Relation.prototype.redrawNormal = function (p1, p2, half) {
 
 SQL.Relation.prototype.redrawSide = function (p1, p2, x) {
     if (this.owner.vector) {
-        let str = "M " + p1[0] + " " + p1[1] + " C " + x + " " + p1[1] + " ";
-        str += x + " " + p2[1] + " " + p2[0] + " " + p2[1];
+        let str = "M " + p1[0] + " " + p1[1];
+        if (this.style == "logical") {
+            // Rectilinear (Manhattan) routing
+            str += " L " + x + " " + p1[1];
+            str += " L " + x + " " + p2[1];
+            str += " L " + p2[0] + " " + p2[1];
+        } else {
+            // Bezier Curve
+            str += " C " + x + " " + p1[1] + " ";
+            str += x + " " + p2[1] + " " + p2[0] + " " + p2[1];
+        }
+
+        if (this.style == "logical") {
+            this.dom[0].setAttribute("marker-end", "url(#crowsfoot)");
+            this.dom[0].setAttribute("marker-start", "url(#one)");
+        }
         this.dom[0].setAttribute("d", str);
     } else {
         this.dom[0].style.left = Math.min(x, p1[0]) + "px";
@@ -196,15 +222,17 @@ SQL.Relation.prototype.redraw = function () {
 
     if (r1 < l2 || r2 < l1) {
         /* between tables */
+        let flipped = false;
         if (Math.abs(r1 - l2) < Math.abs(r2 - l1)) {
             p1 = [r1, t1];
             p2 = [l2, t2];
         } else {
             p1 = [r2, t2];
             p2 = [l1, t1];
+            flipped = true;
         }
         const half = Math.floor((p2[0] - p1[0]) / 2);
-        this.redrawNormal(p1, p2, half);
+        this.redrawNormal(p1, p2, half, flipped);
     } else {
         /* next to tables */
         let x = 0;

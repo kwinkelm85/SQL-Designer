@@ -3,22 +3,26 @@
 SQL.Map = function (owner) {
     this.owner = owner;
     SQL.Visual.apply(this);
-    this.dom.container = OZ.$("minimap");
+    this.dom.container = $("#minimap").get(0);
     this.width = this.dom.container.offsetWidth - 2;
     this.height = this.dom.container.offsetHeight - 2;
 
-    this.dom.port = OZ.DOM.elm("div", { className: "port", zIndex: 1 });
+    this.dom.port = $("<div class='port'></div>").css("zIndex", 1).get(0);
     this.dom.container.appendChild(this.dom.port);
     this.sync = this.sync.bind(this);
 
     this.flag = false;
     this.sync();
 
-    OZ.Event.add(window, "resize", this.sync);
-    OZ.Event.add(window, "scroll", this.sync);
-    OZ.Event.add(this.dom.container, "mousedown", this.down.bind(this));
-    OZ.Event.add(this.dom.container, "touchstart", this.down.bind(this));
-    OZ.Event.add(this.dom.container, "touchmove", OZ.Event.prevent);
+    $(window).on("resize", this.sync);
+    $(window).on("scroll", this.sync);
+    $(this.dom.container).on("mousedown", this.down.bind(this));
+    $(this.dom.container).on("touchstart", this.down.bind(this));
+    $(this.dom.container).on("touchmove", (e) => e.preventDefault());
+
+    // Pre-bind for removal
+    this.moveHandler = this.move.bind(this);
+    this.upHandler = this.up.bind(this);
 };
 SQL.Map.prototype = Object.create(SQL.Visual.prototype);
 
@@ -26,7 +30,11 @@ SQL.Map.prototype.down = function (e) {
     /* mousedown - move view and start drag */
     this.flag = true;
     this.dom.container.style.cursor = "move";
-    const pos = OZ.DOM.pos(this.dom.container);
+
+    // OZ.DOM.pos returns [left, top] of element relative to document
+    // jQuery .offset() returns {top: ..., left: ...} relative to document
+    const offset = $(this.dom.container).offset();
+    const pos = [offset.left, offset.top];
 
     this.x = Math.round(pos[0] + this.l + this.w / 2);
     this.y = Math.round(pos[1] + this.t + this.h / 2);
@@ -43,8 +51,8 @@ SQL.Map.prototype.down = function (e) {
         eventUp = "mouseup";
     }
 
-    this.documentMove = OZ.Event.add(document, eventMove, this.move.bind(this));
-    this.documentUp = OZ.Event.add(document, eventUp, this.up.bind(this));
+    $(document).on(eventMove, this.moveHandler);
+    $(document).on(eventUp, this.upHandler);
 };
 
 SQL.Map.prototype.move = function (e) {
@@ -52,14 +60,14 @@ SQL.Map.prototype.move = function (e) {
     if (!this.flag) {
         return;
     }
-    OZ.Event.prevent(e);
+    e.preventDefault();
 
     let event;
     if (e.type.match(/touch/)) {
-        if (e.touches.length > 1) {
+        if (e.originalEvent && e.originalEvent.touches && e.originalEvent.touches.length > 1) {
             return;
         }
-        event = e.touches[0];
+        event = (e.originalEvent && e.originalEvent.touches) ? e.originalEvent.touches[0] : e;
     } else {
         event = e;
     }
@@ -100,14 +108,22 @@ SQL.Map.prototype.up = function (e) {
     /* mouseup */
     this.flag = false;
     this.dom.container.style.cursor = "";
-    OZ.Event.remove(this.documentMove);
-    OZ.Event.remove(this.documentUp);
+
+    // Naively off both mouse and touch events as we don't track which one started it strictly here
+    // but in `down` we deduced it. 
+    // Simplified: just off all potential ones or track the specific one.
+    // Since we use the same handler reference, we can try removing both or track it.
+    // Let's rely on simple removal.
+    $(document).off("mousemove", this.moveHandler);
+    $(document).off("mouseup", this.upHandler);
+    $(document).off("touchmove", this.moveHandler);
+    $(document).off("touchend", this.upHandler);
 };
 
 SQL.Map.prototype.sync = function () {
     /* when window changes, adjust map */
-    const dims = OZ.DOM.win();
-    const scroll = OZ.DOM.scroll();
+    const dims = [$(window).width(), $(window).height()];
+    const scroll = [$(window).scrollLeft(), $(window).scrollTop()];
     const scaleX = this.width / this.owner.width;
     const scaleY = this.height / this.owner.height;
 

@@ -23,29 +23,26 @@ SQL.Row = function (owner, title, data) {
 SQL.Row.prototype = Object.create(SQL.Visual.prototype);
 
 SQL.Row.prototype._build = function () {
-    this.dom.container = OZ.DOM.elm("tbody");
+    this.dom.container = $("<tbody></tbody>").get(0);
+    this.dom.content = $("<tr></tr>").get(0);
+    this.dom.selected = $("<div class='selected'>&raquo;&nbsp;</div>").get(0);
+    this.dom.title = $("<div class='title'></div>").get(0);
 
-    this.dom.content = OZ.DOM.elm("tr");
-    this.dom.selected = OZ.DOM.elm("div", {
-        className: "selected",
-        innerHTML: "&raquo;&nbsp;",
-    });
-    this.dom.title = OZ.DOM.elm("div", { className: "title" });
-    const td1 = OZ.DOM.elm("td");
-    const td2 = OZ.DOM.elm("td", { className: "typehint" });
+    const td1 = $("<td></td>").get(0);
+    const td2 = $("<td class='typehint'></td>").get(0);
     this.dom.typehint = td2;
 
-    OZ.DOM.append(
-        [this.dom.container, this.dom.content],
-        [this.dom.content, td1, td2],
-        [td1, this.dom.selected, this.dom.title]
-    );
+    $(td1).append(this.dom.selected);
+    $(td1).append(this.dom.title);
+    $(this.dom.content).append(td1);
+    $(this.dom.content).append(td2);
+    $(this.dom.container).append(this.dom.content);
 
     this.enter = this.enter.bind(this);
     this.changeComment = this.changeComment.bind(this);
 
-    OZ.Event.add(this.dom.container, "click", this.click.bind(this));
-    OZ.Event.add(this.dom.container, "dblclick", this.dblclick.bind(this));
+    $(this.dom.container).on("click", this.click.bind(this));
+    $(this.dom.container).on("dblclick", this.dblclick.bind(this));
 };
 
 SQL.Row.prototype.select = function () {
@@ -94,8 +91,8 @@ SQL.Row.prototype.click = function (e) {
 
 SQL.Row.prototype.dblclick = function (e) {
     /* dblclicked on row */
-    OZ.Event.prevent(e);
-    OZ.Event.stop(e);
+    e.preventDefault();
+    e.stopPropagation();
     this.expand();
 };
 
@@ -157,65 +154,55 @@ SQL.Row.prototype.down = function () {
 };
 
 SQL.Row.prototype.buildEdit = function () {
-    OZ.DOM.clear(this.dom.container);
+    $(this.dom.container).empty();
 
     const elms = [];
-    this.dom.name = OZ.DOM.elm("input");
-    this.dom.name.type = "text";
+    this.dom.name = $("<input type='text'>").get(0);
     elms.push(["name", this.dom.name]);
-    OZ.Event.add(this.dom.name, "keypress", this.enter);
+    $(this.dom.name).on("keypress", this.enter);
 
     this.dom.type = this.buildTypeSelect(this.data.type);
     elms.push(["type", this.dom.type]);
 
-    this.dom.size = OZ.DOM.elm("input");
-    this.dom.size.type = "text";
+    this.dom.size = $("<input type='text'>").get(0);
     elms.push(["size", this.dom.size]);
 
-    this.dom.def = OZ.DOM.elm("input");
-    this.dom.def.type = "text";
+    this.dom.def = $("<input type='text'>").get(0);
     elms.push(["def", this.dom.def]);
 
-    this.dom.ai = OZ.DOM.elm("input");
-    this.dom.ai.type = "checkbox";
+    this.dom.ai = $("<input type='checkbox'>").get(0);
     elms.push(["ai", this.dom.ai]);
 
-    this.dom.nll = OZ.DOM.elm("input");
-    this.dom.nll.type = "checkbox";
+    this.dom.nll = $("<input type='checkbox'>").get(0);
     elms.push(["null", this.dom.nll]);
 
-    this.dom.comment = OZ.DOM.elm("span", { className: "comment" });
+    this.dom.comment = $("<span class='comment'></span>").get(0);
     this.dom.comment.innerHTML = "";
     this.dom.comment.appendChild(document.createTextNode(this.data.comment));
 
-    this.dom.commentbtn = OZ.DOM.elm("input");
-    this.dom.commentbtn.type = "button";
-    this.dom.commentbtn.id = "commentbtn";
-    this.dom.commentbtn.value = _("comment");
-
-    OZ.Event.add(this.dom.commentbtn, "click", this.changeComment);
+    this.dom.commentbtn = $("<input type='button' id='commentbtn'>").val(_("comment")).get(0);
+    $(this.dom.commentbtn).on("click", this.changeComment);
 
     let tr;
     let td1;
     let td2
     for (let row of elms) {
-        tr = OZ.DOM.elm("tr");
-        td1 = OZ.DOM.elm("td");
-        td2 = OZ.DOM.elm("td");
-        const l = OZ.DOM.text(_(row[0]) + ": ");
-        OZ.DOM.append([tr, td1, td2], [td1, l], [td2, row[1]]);
-        this.dom.container.appendChild(tr);
+        tr = $("<tr></tr>");
+        td1 = $("<td></td>");
+        td2 = $("<td></td>");
+        td1.text(_(row[0]) + ": ");
+        td2.append(row[1]);
+        tr.append(td1).append(td2);
+        $(this.dom.container).append(tr);
     }
 
-    tr = OZ.DOM.elm("tr");
-    td1 = OZ.DOM.elm("td");
-    td2 = OZ.DOM.elm("td");
-    OZ.DOM.append(
-        [tr, td1, td2],
-        [td1, this.dom.comment],
-        [td2, this.dom.commentbtn]
-    );
-    this.dom.container.appendChild(tr);
+    tr = $("<tr></tr>");
+    td1 = $("<td></td>");
+    td2 = $("<td></td>");
+    td1.append(this.dom.comment);
+    td2.append(this.dom.commentbtn);
+    tr.append(td1).append(td2);
+    $(this.dom.container).append(tr);
 };
 
 SQL.Row.prototype.changeComment = function (e) {
@@ -236,7 +223,7 @@ SQL.Row.prototype.expand = function () {
     this.buildEdit();
     this.load();
     this.redraw();
-    this.dom.container.classList.add("expanded");
+    $(this.dom.container).addClass("expanded");
     this.dom.name.focus();
     this.dom.name.select();
 };
@@ -246,7 +233,7 @@ SQL.Row.prototype.collapse = function () {
         return;
     }
     this.expanded = false;
-    this.dom.container.classList.remove("expanded");
+    $(this.dom.container).removeClass("expanded");
 
     const data = {
         type: this.dom.type.selectedIndex,
@@ -256,7 +243,7 @@ SQL.Row.prototype.collapse = function () {
         ai: this.dom.ai.checked,
     };
 
-    OZ.DOM.clear(this.dom.container);
+    $(this.dom.container).empty();
     this.dom.container.appendChild(this.dom.content);
 
     this.update(data);
@@ -271,23 +258,23 @@ SQL.Row.prototype.load = function () {
         def = "NULL";
     }
 
-    this.dom.def.value = def;
-    this.dom.size.value = this.data.size;
-    this.dom.nll.checked = this.data.nll;
-    this.dom.ai.checked = this.data.ai;
+    // Check if elements exist (in case buildEdit failed or something)
+    if (this.dom.def) this.dom.def.value = def;
+    if (this.dom.size) this.dom.size.value = this.data.size;
+    if (this.dom.nll) this.dom.nll.checked = this.data.nll;
+    if (this.dom.ai) this.dom.ai.checked = this.data.ai;
 };
 
 SQL.Row.prototype.redraw = function () {
     const color = this.getColor();
     this.dom.container.style.backgroundColor = color;
     this.dom.container.style.borderColor = color;
-    OZ.DOM.removeClass(this.dom.title, "primary");
-    OZ.DOM.removeClass(this.dom.title, "key");
+    $(this.dom.title).removeClass("primary key");
     if (this.isPrimary()) {
-        OZ.DOM.addClass(this.dom.title, "primary");
+        $(this.dom.title).addClass("primary");
     }
     if (this.isKey()) {
-        OZ.DOM.addClass(this.dom.title, "key");
+        $(this.dom.title).addClass("key");
     }
     this.dom.selected.style.display = this.selected ? "" : "none";
     this.dom.container.title = this.data.comment;
@@ -347,16 +334,16 @@ SQL.Row.prototype.getColor = function () {
 
 SQL.Row.prototype.buildTypeSelect = function (id) {
     /* build selectbox with avail datatypes */
-    const s = OZ.DOM.elm("select");
+    const s = $("<select></select>").get(0);
     const gs = DATATYPES.getElementsByTagName("group");
     for (let g of gs) {
-        const og = OZ.DOM.elm("optgroup");
+        const og = $("<optgroup></optgroup>").get(0);
         og.style.backgroundColor = g.getAttribute("color") || "#fff";
         og.label = g.getAttribute("label");
         s.appendChild(og);
         const ts = g.getElementsByTagName("type");
         for (let t of ts) {
-            const o = OZ.DOM.elm("option");
+            const o = $("<option></option>").get(0);
             if (t.getAttribute("color")) {
                 o.style.backgroundColor = t.getAttribute("color");
             }

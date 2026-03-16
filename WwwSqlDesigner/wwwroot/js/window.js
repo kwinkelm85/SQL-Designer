@@ -3,25 +3,26 @@
 SQL.Window = function (owner) {
     this.owner = owner;
     this.dom = {
-        container: OZ.$("window"),
-        background: OZ.$("background"),
-        ok: OZ.$("windowok"),
-        cancel: OZ.$("windowcancel"),
-        title: OZ.$("windowtitle"),
-        content: OZ.$("windowcontent"),
-        throbber: OZ.$("throbber"),
+        container: $("#window").get(0),
+        background: $("#background").get(0),
+        ok: $("#windowok").get(0),
+        cancel: $("#windowcancel").get(0),
+        title: $("#windowtitle").get(0),
+        content: $("#windowcontent").get(0),
+        throbber: $("#throbber").get(0),
     };
     this.dom.ok.value = _("windowok");
     this.dom.cancel.value = _("windowcancel");
     this.dom.throbber.alt = this.dom.throbber.title = _("throbber");
-    OZ.Event.add(this.dom.ok, "click", this.ok.bind(this));
-    OZ.Event.add(this.dom.cancel, "click", this.close.bind(this));
-    OZ.Event.add(document, "keydown", this.key.bind(this));
+
+    $(this.dom.ok).on("click", this.ok.bind(this));
+    $(this.dom.cancel).on("click", this.close.bind(this));
+    $(document).on("keydown", this.key.bind(this));
 
     this.sync = this.sync.bind(this);
 
-    OZ.Event.add(window, "scroll", this.sync);
-    OZ.Event.add(window, "resize", this.sync);
+    $(window).on("scroll", this.sync);
+    $(window).on("resize", this.sync);
     this.state = 0;
     this.hideThrobber();
 
@@ -39,18 +40,25 @@ SQL.Window.prototype.hideThrobber = function () {
 SQL.Window.prototype.open = function (title, content, callback) {
     this.state = 1;
     this.callback = callback;
+
+    // Clear title children except the image (throbber is inside title div in original HTML? Check index.html)
+    // index.html: <div id="windowtitle"><img id="throbber" ... /></div>
+    // So we want to keep the first child (throbber)
+
     while (this.dom.title.childNodes.length > 1) {
         this.dom.title.removeChild(this.dom.title.childNodes[1]);
     }
 
-    const txt = OZ.DOM.text(title);
+    const txt = document.createTextNode(title);
     this.dom.title.appendChild(txt);
     this.dom.background.style.visibility = "visible";
-    OZ.DOM.clear(this.dom.content);
+
+    $(this.dom.content).empty();
     this.dom.content.appendChild(content);
 
-    const win = OZ.DOM.win();
-    const scroll = OZ.DOM.scroll();
+    const win = [$(window).width(), $(window).height()];
+    const scroll = [$(window).scrollLeft(), $(window).scrollTop()];
+
     this.dom.container.style.left =
         Math.round(scroll[0] + (win[0] - this.dom.container.offsetWidth) / 2) +
         "px";
@@ -101,8 +109,8 @@ SQL.Window.prototype.close = function () {
 
 SQL.Window.prototype.sync = function () {
     /* adjust background position */
-    const dims = OZ.DOM.win();
-    const scroll = OZ.DOM.scroll();
+    const dims = [$(window).width(), $(window).height()];
+    const scroll = [$(window).scrollLeft(), $(window).scrollTop()];
     this.dom.background.style.width = dims[0] + "px";
     this.dom.background.style.height = dims[1] + "px";
     this.dom.background.style.left = scroll[0] + "px";
