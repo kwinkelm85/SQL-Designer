@@ -90,6 +90,8 @@
     <string name="serverloadprompt">Enter keyword under which your design was saved:</string>
     <string name="serversaveprompt">Enter keyword under which your design will be saved:</string>
     <string name="serverimportprompt">Enter name of database to be imported:</string>
+    <string name="serveraudit">Run Audit</string>
+    <string name="serverauditprompt">Enter object type to audit (TABLE, PACKAGE, or SEQUENCE):</string>
     <string name="httpresponse">Server response</string>
     <string name="http201">Saved</string>
     <string name="http404">Not Found</string>

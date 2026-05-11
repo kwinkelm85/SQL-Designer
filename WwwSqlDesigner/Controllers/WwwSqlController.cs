@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
+using System.Data;
+using Oracle.ManagedDataAccess.Client;
 using WwwSqlDesigner.Data;
 
 namespace WwwSqlDesigner.Controllers
@@ -9,11 +11,13 @@ namespace WwwSqlDesigner.Controllers
     {
         private readonly ILogger<WwwSqlController> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public WwwSqlController(ILogger<WwwSqlController> logger, ApplicationDbContext context)
+        public WwwSqlController(ILogger<WwwSqlController> logger, ApplicationDbContext context, IConfiguration configuration)
         {
             _logger = logger;
             _context = context;
+            _configuration = configuration;
         }
 
         [HttpGet]
@@ -103,6 +107,94 @@ namespace WwwSqlDesigner.Controllers
         public IActionResult Import()
         {
             return NotFound();
+        }
+
+        [HttpPost]
+        [Route("backend/audit/execute")]
+        public async Task<IActionResult> ExecuteAudit([FromQuery] string objectType)
+        {
+            if (string.IsNullOrEmpty(objectType))
+            {
+                return BadRequest("Object type is required.");
+            }
+
+            var connectionString = _configuration.GetConnectionString("OracleConnection");
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                return StatusCode(500, "Oracle connection string is not configured.");
+            }
+
+            StringBuilder outputBuilder = new StringBuilder();
+
+            try
+            {
+                using (OracleConnection connection = new OracleConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+
+                    // Enable DBMS_OUTPUT
+                    using (OracleCommand cmdEnable = connection.CreateCommand())
+                    {
+                        cmdEnable.CommandText = "DBMS_OUTPUT.ENABLE(NULL);";
+                        cmdEnable.CommandType = CommandType.Text;
+                        await cmdEnable.ExecuteNonQueryAsync();
+                    }
+
+                    // Execute the package
+                    using (OracleCommand cmdExecute = connection.CreateCommand())
+                    {
+                        cmdExecute.CommandText = "DA_API_SPY.PKG_DA_DESCRIBE_KW.prAddSingleDescriptSession";
+                        cmdExecute.CommandType = CommandType.StoredProcedure;
+                        
+                        cmdExecute.Parameters.Add("pvDatabaseName", OracleDbType.Varchar2).Value = "DESA";
+                        cmdExecute.Parameters.Add("pvSchemaName", OracleDbType.Varchar2).Value = "DA_API_SPY";
+                        cmdExecute.Parameters.Add("pvObjectType", OracleDbType.Varchar2).Value = objectType.ToUpper();
+                        cmdExecute.Parameters.Add("pvDebugYN", OracleDbType.Varchar2).Value = "N";
+
+                        await cmdExecute.ExecuteNonQueryAsync();
+                    }
+
+                    // Fetch DBMS_OUTPUT
+                    using (OracleCommand cmdGetLine = connection.CreateCommand())
+                    {
+                        cmdGetLine.CommandText = "DBMS_OUTPUT.GET_LINE(:line, :status)";
+                        cmdGetLine.CommandType = CommandType.Text;
+
+                        cmdGetLine.Parameters.Add("line", OracleDbType.Varchar2, 32767).Direction = ParameterDirection.Output;
+                        cmdGetLine.Parameters.Add("status", OracleDbType.Int32).Direction = ParameterDirection.Output;
+
+                        int status = 0;
+                        while (status == 0)
+                        {
+                            await cmdGetLine.ExecuteNonQueryAsync();
+                            var statusVal = cmdGetLine.Parameters["status"].Value;
+                            status = (statusVal is OracleDecimal od) ? od.ToInt32() : Convert.ToInt32(statusVal);
+
+                            if (status == 0)
+                            {
+                                var lineVal = cmdGetLine.Parameters["line"].Value;
+                                string line = lineVal == null || lineVal is DBNull || (lineVal is OracleString os && os.IsNull) 
+                                              ? string.Empty 
+                                              : lineVal.ToString();
+                                outputBuilder.AppendLine(line);
+                            }
+                        }
+                    }
+                }
+
+                string finalOutput = outputBuilder.ToString();
+                if (string.IsNullOrWhiteSpace(finalOutput))
+                {
+                    finalOutput = "Audit executed successfully, but no output was returned.";
+                }
+
+                return Content(finalOutput, "text/plain");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing audit package.");
+                return StatusCode(500, $"An error occurred: {ex.Message}\n{ex.StackTrace}");
+            }
         }
     }
 }

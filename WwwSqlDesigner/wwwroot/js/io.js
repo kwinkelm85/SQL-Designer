@@ -21,6 +21,7 @@ SQL.IO = function (owner) {
         "serverload",
         "serverlist",
         "serverimport",
+        "serveraudit",
     ];
     for (let id of ids) {
         let elm = $("#" + id).get(0);
@@ -60,6 +61,7 @@ SQL.IO = function (owner) {
     $(this.dom.serverload).on("click", this.serverload.bind(this));
     $(this.dom.serverlist).on("click", this.serverlist.bind(this));
     $(this.dom.serverimport).on("click", this.serverimport.bind(this));
+    $(this.dom.serveraudit).on("click", this.serveraudit.bind(this));
     $(document).on("keydown", this.press.bind(this));
     this.build();
 };
@@ -535,6 +537,39 @@ SQL.IO.prototype.serverimport = function (e) {
         },
         error: (xhr) => {
             this.importresponse(xhr.responseXML, xhr.status);
+        }
+    });
+};
+
+SQL.IO.prototype.serveraudit = function (e) {
+    const objectType = prompt(_("serverauditprompt"), "TABLE");
+    if (!objectType) {
+        return;
+    }
+    const typeUpper = objectType.toUpperCase();
+    if (typeUpper !== "TABLE" && typeUpper !== "PACKAGE" && typeUpper !== "SEQUENCE") {
+        alert("Invalid object type. Must be TABLE, PACKAGE, or SEQUENCE.");
+        return;
+    }
+
+    const bp = this.owner.getOption("xhrpath");
+    const url = bp + "backend/audit/execute?objectType=" + encodeURIComponent(typeUpper);
+    const h = this.owner.getXhrHeaders();
+    this.owner.window.showThrobber();
+    this.dom.ta.value = "Executing audit for " + typeUpper + "... Please wait.";
+
+    $.ajax({
+        url: url,
+        method: "POST",
+        headers: h,
+        dataType: "text",
+        success: (data, status, xhr) => {
+            this.owner.window.hideThrobber();
+            this.dom.ta.value = data;
+        },
+        error: (xhr) => {
+            this.owner.window.hideThrobber();
+            this.dom.ta.value = "Error executing audit: " + xhr.responseText;
         }
     });
 };

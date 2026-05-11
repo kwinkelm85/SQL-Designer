@@ -1,6 +1,5 @@
 PROCEDURE DDL_AUDIT_NOTIFICATION        (debug_audit_emails             IN     BOOLEAN  DEFAULT FALSE,
-                                                           debug_specific_database        IN     VARCHAR2 DEFAULT null,
-                                                           debug_exclude_databases        IN     VARCHAR2 DEFAULT null)
+                                                           debug_specific_database        IN     VARCHAR2 DEFAULT null)
 AS
 /*******************************************************************************
  * Purpose: Review the content of the DDL_AUDIT tables in all relevant
@@ -59,9 +58,17 @@ AS
  *                               debug_audit_email_rcpnt_addr variable so that
  *                               emails are sent to Dona Yee instead of me
  *                               when this procedure is run in debug mode.
+ * Adam Erickson    2026-MAR-03  Added audit_email_server to soft-code the location
+ *                               that sends the email (localhost vs apps.smtp.gov.bc.ca)
+ *                  2026-MAR-05  Also removed solo LF - chr(10) - characters.
+ * Kyron Winkelmeyer 2026-MAR-19 Added logic to use DBMS_JOBS, handle broken jobs, and
+ *                               ensure that the audit email is sent for the
+ *                               correct time period.
  ******************************************************************************/
+
    audit_email_from_header      VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_FROM_HEADER');
 --      DEFAULT 'DDL Audit Facility" <noreply@gov.bc.ca>';
+
 
 
    audit_email_recipient_addr   VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_TO_ADDR');
@@ -70,16 +77,23 @@ AS
 --      DEFAULT 'ITSDDATA@Victoria1.gov.bc.ca';
 
 
+
    audit_email_sending_addr     VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_FROM_ADDR');
 
 
 --      DEFAULT 'noreply@gov.bc.ca';
 
 
+
    audit_email_to_header        VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_TO_HEADER');
 
 
 --      DEFAULT '"AG ITSD DATA" <ITSDDATA@Victoria1.gov.bc.ca>';
+
+
+
+   audit_email_server           VARCHAR2(200) := pkg_des_util.fvConstantGet('DDL_AUDIT_EMAIL_SERVER');
+
 
 
    audit_table_found            BOOLEAN;
@@ -97,6 +111,9 @@ AS
    ddl_run_since_date           DATE;
 
 
+   vLineBreak                   VARCHAR2(10) := chr(13) || chr(10);
+
+
 
    -- Emails are only sent to the address below when the input parameter
 
@@ -108,11 +125,6 @@ AS
 
 
 --      DEFAULT 'adam.erickson@gov.bc.ca';
-
-
-
-   vDebugExcludeDatabases       VARCHAR2(4000) := upper(ltrim(rtrim(debug_exclude_databases)));
-
 
 
    error_msg                    VARCHAR2(512);
@@ -128,76 +140,43 @@ AS
         FROM user_db_links
 
 
+       WHERE (debug_specific_database is null
+
+
+              OR db_link = debug_specific_database)
+
+
        ORDER BY name DESC;
 
 
 
    PROCEDURE get_audit_last_run_date (last_run_date  OUT DATE,
-
-
                                       dbms_job_found OUT BOOLEAN) AS
-
-
-   /*****************************************************************************
-
-
-    * Purpose: Retrieve the most recent date/time that the
-
-
-    *          DDL_AUDIT_NOTIFICATION procedure successfully completed (when
-
-
-    *          initiated via DBMS_JOB).
-
-
-    ****************************************************************************/
-
-
    BEGIN
-
 
       dbms_job_found := TRUE;
 
-
-      -- Retrieve the last_date column from user_jobs to determine the most
-
-
-      -- recent completion date/time of the job that runs DDL_AUDIT_NOTIFICATION.
-
-
-      -- If the job has not yet been succesfully run, last_date will be null so
-
-
-      -- default last_run_date to one day ago.
-
-
---vhd_begin
-
-
-      -- Determine the most recent date/time that the procedure successfully completed.
-      SELECT NVL(last_date, SYSDATE - 1)
+      -- Query the scheduler run history for the last successful job completion.
+      -- A job currently running will not have a 'SUCCEEDED' status in the table user_scheduler_job_run_details.
+      -- MAX() date on the last job successfully completed as defined by a status of 'SUCCEEDED'
+      
+      SELECT CAST(MAX(actual_start_date) AS DATE)
         INTO last_run_date
-        FROM user_jobs
-       WHERE what LIKE '%DDL_AUDIT_NOTIFICATION%';
+        FROM user_scheduler_job_run_details
+       WHERE job_name IN (SELECT job_name 
+                            FROM user_scheduler_jobs 
+                           WHERE upper(job_action) LIKE '%DDL_AUDIT_NOTIFICATION%')
+         AND status = 'SUCCEEDED';
 
+      IF last_run_date IS NULL THEN
+         RAISE NO_DATA_FOUND;
+      END IF;
 
    EXCEPTION
-
-
       WHEN NO_DATA_FOUND THEN
-
-
-         -- If the job that runs DDL_AUDIT_NOTIFICATION cannot be found then
-
-
-         -- default last_run_date to one week ago.
-
-
+         -- If the job or scheduler history cannot be found, default to one week ago.
          last_run_date  := SYSDATE - 7;
-
-
          dbms_job_found := FALSE;
-
 
    END get_audit_last_run_date;
 
@@ -1214,7 +1193,7 @@ AS
                to_char(audit_summary_tab(i).ddl_statements_executed,
 
 
-                  '999,999,999,999') || '</td></tr>' || chr(13) || chr(10));
+                  '999,999,999,999') || '</td></tr>' || vLineBreak);
 
 
             -- NOTE: The line break character chr(10) was included above to avoid
@@ -1250,7 +1229,7 @@ AS
             'Total<br>Updates'  || '</td><td>' ||
 
 
-            totalStatements || '</td></tr>' || chr(13) || chr(10));
+            totalStatements || '</td></tr>' || vLineBreak);
 
 
 
@@ -1388,7 +1367,7 @@ BEGIN
    -- Open a connection to an SMTP server
 
 
-   c := utl_smtp.open_connection('localhost');
+   c := utl_smtp.open_connection(audit_email_server);
 
 
 
@@ -1420,28 +1399,15 @@ BEGIN
       -- the audit email.
 
 
---vhd_begin
+   --vhd_begin
 
 
-/*  ddl_run_since_date := ddl_run_since_date - (1/24);*/
-
-
-    -- Subtract one hour from this date/time to ensure that any DDL
-
-
-    -- that was executed while this procedure was running is also included in
-
-
-    -- the audit email.
-
-
-    ddl_run_since_date := ddl_run_since_date - (2/24);
-
+         -- Apply the 1-hour overlap buffer to the calculated base date
+      ddl_run_since_date := ddl_run_since_date - (1/24);
 
 --vhd_end
 
-
-   else
+   ELSE
 
 
       -- Inform the DA Group that the DBMS_JOB entry could not be found.
@@ -1457,123 +1423,13 @@ BEGIN
    --  Loop through each database link owned by DES_OWNER.
 
 
-   --    -- unless debug_specific_database is specified.
+   FOR des_owner_db_link IN des_owner_db_links LOOP
 
 
+      -- Skip databases that do not need to be audited.
 
-   if debug_specific_database is null then
 
-
-      FOR des_owner_db_link IN des_owner_db_links LOOP
-
-
-         -- Skip databases that do not need to be audited.
-
-
-         IF     des_owner_db_link.name <> 'SAIPAN_CONB'
-
-
-            and nvl(instr(vDebugExcludeDatabases, des_owner_db_link.name), 0) = 0
-
-
-        THEN
-
-
-            -- Check for the necessary auditing objects in the database that
-
-
-            -- corresponds to the current database link.
-
-
-            check_for_audit_objects(des_owner_db_link.name,
-
-
-                                    audit_table_found,
-
-
-                                    audit_trigger_found,
-
-
-                                    error_msg);
-
-
-            IF error_msg IS NOT NULL THEN
-
-
-               -- An error was encountered attempting to locate the auditing objects
-
-
-               -- in the database, so send an email describing the error.
-
-
-               send_error_email(des_owner_db_link.name,
-
-
-                                error_msg,
-
-
-                                'procedure check_for_audit_objects');
-
-
-            ELSIF audit_table_found and audit_trigger_found THEN
-
-
-               -- The necessary auditing objects were found in the database, so send an
-
-
-               -- email that summarizes the changes to the relevant database objects.
-
-
-               send_summary_email(des_owner_db_link.name,ddl_run_since_date);
-
-
-            ELSE
-
-
-               -- The necessary auditing objects were not found, so send an email that
-
-
-               -- informs the DA Group.
-
-
-               send_missing_audit_objs_email(des_owner_db_link.name,
-
-
-                                             audit_table_found,
-
-
-                                             audit_trigger_found);
-
-
-            END IF;
-
-
-            -- Issue a COMMIT to free up the open database links.  This will avoid
-
-
-            -- an ORA-02020 error.
-
-
-            COMMIT;
-
-
-         end if;
-
-
-      END LOOP;
-
-
-
-   else   -- only run for the one specified database link
-
-
-      IF debug_specific_database <> 'SAIPAN_CONB'
-
-
-            and nvl(instr(vDebugExcludeDatabases, debug_specific_database), 0) = 0
-
-
-      THEN
+      IF des_owner_db_link.name <> 'SAIPAN_CONB' THEN
 
 
          -- Check for the necessary auditing objects in the database that
@@ -1582,7 +1438,7 @@ BEGIN
          -- corresponds to the current database link.
 
 
-         check_for_audit_objects(debug_specific_database,
+         check_for_audit_objects(des_owner_db_link.name,
 
 
                                  audit_table_found,
@@ -1603,7 +1459,7 @@ BEGIN
             -- in the database, so send an email describing the error.
 
 
-            send_error_email(debug_specific_database,
+            send_error_email(des_owner_db_link.name,
 
 
                              error_msg,
@@ -1621,7 +1477,7 @@ BEGIN
             -- email that summarizes the changes to the relevant database objects.
 
 
-            send_summary_email(debug_specific_database,ddl_run_since_date);
+            send_summary_email(des_owner_db_link.name,ddl_run_since_date);
 
 
          ELSE
@@ -1633,7 +1489,7 @@ BEGIN
             -- informs the DA Group.
 
 
-            send_missing_audit_objs_email(debug_specific_database,
+            send_missing_audit_objs_email(des_owner_db_link.name,
 
 
                                           audit_table_found,
@@ -1657,8 +1513,7 @@ BEGIN
       end if;
 
 
-
-   end if;
+   END LOOP;
 
 
 

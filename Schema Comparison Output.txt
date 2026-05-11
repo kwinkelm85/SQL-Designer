@@ -1,0 +1,17 @@
+COMPARING Sequences in JUSTIN@DEVJ vs JUSTIN@TSTJ
+=================================================================================
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+I) Sequences in JUSTIN@DEVJ but not in JUSTIN@TSTJ
+... FOUND: Sequence JR_REOB_SEQ
+... FOUND: Sequence JUSTIN_CRAP_SEQ
+... FOUND: Sequence JUSTIN_RONNA_DARS
+... FOUND: Sequence JUSTIN_RONNA_SEQ
+... FOUND: Sequence PLSQL_PROFILER_RUNNUMBER
+... FOUND: Sequence PS_TXN_SEQ
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+II) Sequences in JUSTIN@TSTJ but not in JUSTIN@DEVJ
+... None found.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+III) Sequences in JUSTIN@DEVJ with differing  counts than in TSTJ
+... None found.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
